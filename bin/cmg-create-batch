@@ -15,7 +15,7 @@ def usage():
     print "                            This option can be omitted; then it will read root files in the cfg file"
     print ""
     print "    -q QUEUE              : job queue (default is 8nh)"
-    print "    --prefix PREFIX       : Put prefix on the fileName. (default is cmgTuple)"
+    print "    --prefix PREFIX       : Add files with prefix only. (default is cmgTuple)"
     
     sys.exit()
 
