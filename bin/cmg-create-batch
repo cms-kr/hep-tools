@@ -141,9 +141,11 @@ for section in range(nSection):
     else:
         process.source.fileNames = fileNames[begin:]
     if hasattr(process, 'TFileService'):
-        process.TFileService.fileName = '%s_%03d.root' % (prefix, section+1)
+        outFilePrefix = process.TFileService.fileName.value()[:-5]
+        process.TFileService.fileName = '%s_%03d.root' % (outFilePrefix, section+1)
     if hasattr(process, 'rivetAnalyzer'):
-        process.rivetAnalyzer.OutputFile = '%s_%03d.aida' % (prefix, section+1)
+        outFilePrefix = process.rivetAnalyzer.OutputFile.value()[:-5]
+        process.rivetAnalyzer.OutputFile = '%s_%03d.aida' % (outFilePrefix, section+1)
     runConfig.write(process.dumpPython())
     runConfig = None
 submitScript = None
