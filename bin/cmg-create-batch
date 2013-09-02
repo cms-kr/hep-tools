@@ -124,6 +124,11 @@ else:
         delattr(process.source, 'lumisToProcess')
 
 
+## Prepare for job splitting, cache output file name prefixes
+outFilePrefixes = {}
+if hasattr(process, 'TFileSerivce'): outFilePrefixes['TFileService'] = process.TFileService.fileName.value()[:-5]
+if hasattr(process, 'rivetAnalyzer'): outFilePrefixes['rivetAnalyzer'] = process.rivetAnalyzer.OutputFile.value()[:-5]
+
 ## Write run configuration files, split jobs
 submitScript = open("%s/submit.sh" % scratchDir, "w")
 print>>submitScript, "#!/bin/bash"
@@ -141,11 +146,10 @@ for section in range(nSection):
     else:
         process.source.fileNames = fileNames[begin:]
     if hasattr(process, 'TFileService'):
-        outFilePrefix = process.TFileService.fileName.value()[:-5]
-        process.TFileService.fileName = '%s_%03d.root' % (outFilePrefix, section+1)
+        process.TFileService.fileName = '%s_%03d.root' % (outFilePrefixes['TFileService'], section+1)
     if hasattr(process, 'rivetAnalyzer'):
         outFilePrefix = process.rivetAnalyzer.OutputFile.value()[:-5]
-        process.rivetAnalyzer.OutputFile = '%s_%03d.aida' % (outFilePrefix, section+1)
+        process.rivetAnalyzer.OutputFile = '%s_%03d.aida' % (outFilePrefixes['rivetAnalyzer'], section+1)
     runConfig.write(process.dumpPython())
     runConfig = None
 submitScript = None
