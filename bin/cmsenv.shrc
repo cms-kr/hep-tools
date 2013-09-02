@@ -1,0 +1,18 @@
+#!/bin/bash
+
+SCRAM_TEST=`scram runtime -sh | head -1 | grep '^Unable'`
+
+if [ "$SCRAM_TEST"_ != _ ]; then
+  SCRAM_ERROR_VERSION=`echo $SCRAM_TEST | grep -o 'V[0-9]_[0-9]_[0-9]'`
+  if [ $SCRAM_ERROR_VERSION == 'V2_0_6' ]; then
+    export SCRAM_ARCH=slc4_ia32_gcc345
+  elif [ $SCRAM_ERROR_VERSION == 'V2_2_0' ]; then
+    export SCRAM_ARCH=slc5_ia32_gcc434
+  fi
+
+  unset SCRAM_ERROR_VERSION
+fi
+
+unset SCRAM_TEST
+
+eval `scram runtime -sh`

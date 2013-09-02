@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+
+import sys, os
+from math import ceil
+
+def usage():
+    print "Usage: cmg-create-batch -c CONFIGFILE_cfg.py -n NFILES_PER_SECTION -d CMG_DATASET_PATH ... "
+    print "\nIf CMG_DATASET_PATH is not given, root files in the cfg file will be used"
+    print "options :"
+    print "    -c CONFIGFILE_cfg.py  : read config file 'CONFIGFILE_cfg.py'"
+    print "    -n NFILES_PER_SECTION : Number of root files per section"
+    print "    -o OUTPUT_DIRECTORY   : Output directory name"
+    print ""
+    print "    -d DATASET            : Name of CMG dataset. You can find dataset name using cmg-list-datasets command"
+    print "                            This option can be omitted; then it will read root files in the cfg file"
+    print ""
+    print "    -q QUEUE              : job queue (default is 8nh)"
+    print "    --prefix PREFIX       : Put prefix on the fileName. (default is cmgTuple)"
+    
+    sys.exit()
+
+## Process options and arguments
+if len(sys.argv) < 5 or '-h' in sys.argv or '--help' in sys.argv:
+    usage()
+
+### Parse mandatory options
+args = sys.argv[1:]
+try:
+    configFile = args[args.index('-c')+1]
+    nFilePerSection = int(args[args.index('-n')+1])
+    scratchDir = args[args.index('-o')+1]
+except:
+    usage()
+prefix = configFile.replace('_cfg.py', '')
+
+### Optional, dataset name can be judged from the cfg file
+try:
+    datasetName = args[args.index('-d')+1]
+except:
+    datasetName = None
+
+try:
+    fileNamePrefix = args[args.index('--prefix')+1]
+except:
+    fileNamePrefix = 'cmgTuple_'
+
+### Other optional arguments
+if '-q' in args:
+    try:
+        jobQueue = args[args.index('-q')+1]
+    except:
+        usage()
+else:
+    jobQueue = "8nh"
+
+## Prepare scratch area
+if os.path.exists(scratchDir):
+    print "Output directory %s already exists." % scratchDir
+    while True:
+        yn = raw_input("Remove it?[y/n] ").lower()
+        if yn == 'y':
+            os.system("rm -rf %s" % scratchDir)
+            break
+        elif yn == 'n':
+            print "Please rename existing directory."
+            print "User canceled job creation."
+            sys.exit()
+os.makedirs(scratchDir)
+scratchDirFullPath = os.path.abspath(scratchDir)
+
+## Write run script
+runScript = open("%s/%s.sh" % (scratchDir, prefix), "w")
+print>>runScript, "#!/bin/bash"
+print>>runScript, "cd %s/src" % os.environ["CMSSW_BASE"]
+print>>runScript, "eval `scram runtime -sh`"
+print>>runScript, "cd %s" % scratchDirFullPath
+print>>runScript, "SECTION=$1"
+print>>runScript, "cmsRun %s_${SECTION}_cfg.py" % prefix
+runScript = None
+os.system("chmod +x %s/%s.sh" % (scratchDir, prefix))
+
+## Load configuration file
+sys.path.append('.')
+process = __import__(configFile.replace('.py', '')).process
+
+if datasetName == None:
+    ## Input root files are already defined in the config file
+    print "Use dataset defined in the configuration file."
+    print "The first file name was:", 
+    fileNames = process.source.fileNames[:]
+    print fileNames[0]
+else:
+    ## If dataset name is specified, load dataset names from eos
+    eosCmd = '/afs/cern.ch/project/eos/installation/0.2.31/bin/eos.select'
+    dataPath = '/store/cmst3/user/cmgtools/CMG/' + datasetName
+    fileNamesIn = os.popen("%s ls %s | sort -n -k2 -t_" % (eosCmd, dataPath)).readlines()
+    fileNames = []
+    lenPrefix = len(fileNamePrefix)
+    for fileName in fileNamesIn:
+        fileName = fileName.strip()
+        if len(fileName) < 5 or fileName[-5:] != '.root': continue
+        if lenPrefix > len(fileName)+5: continue
+        if fileNamePrefix != fileName[:lenPrefix]: continue
+
+        fileNames.append("%s/%s" % (dataPath, fileName))
+
+if len(fileNames) == 0:
+    print "Input file list is empty. Please check your dataset"
+    os.system("rm -rf %s" % scratchDir)
+    sys.exit()
+
+## Apply JSON
+if 'Run' in fileNames[0]:
+    print "Applying JSON to dataset"
+    from CMGTools.Common.Tools.applyJSON_cff import *
+    jsonBaseDir = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions12/8TeV'
+    if 'Prompt' in fileNames[0]:
+        json = jsonBaseDir + '/Prompt/Cert_190456-208686_8TeV_PromptReco_Collisions12_JSON.txt'
+    else:
+        json = jsonBaseDir + '/Reprocessing/Cert_190456-208686_8TeV_22Jan2013ReReco_Collisions12_JSON.txt'
+    applyJSON(process, json)
+else:
+    if hasattr(process.source, 'lumisToProcess'):
+        delattr(process.source, 'lumisToProcess')
+
+
+## Write run configuration files, split jobs
+submitScript = open("%s/submit.sh" % scratchDir, "w")
+print>>submitScript, "#!/bin/bash"
+nFiles = len(fileNames)
+nSection = int(ceil(1.0*nFiles/nFilePerSection)) ## round up, cover up remaining job fragment if exists
+for section in range(nSection):
+    jobName = "%s %d" % (datasetName, section+1)
+    logFileName = "%s_%03d.log" % (prefix, section+1)
+    print>>submitScript, "bsub -q %s -oo %s -J \"%s\" %s.sh %03d" % (jobQueue, logFileName, jobName, prefix, section+1)
+    runConfig = open("%s/%s_%03d_cfg.py" % (scratchDir, prefix, section+1), "w")
+    begin = section*nFilePerSection
+    if section < nSection-1:
+        end = begin+nFilePerSection
+        process.source.fileNames = fileNames[begin:end]
+    else:
+        process.source.fileNames = fileNames[begin:]
+    if hasattr(process, 'TFileService'):
+        process.TFileService.fileName = '%s_%03d.root' % (prefix, section+1)
+    if hasattr(process, 'rivetAnalyzer'):
+        process.rivetAnalyzer.OutputFile = '%s_%03d.aida' % (prefix, section+1)
+    runConfig.write(process.dumpPython())
+    runConfig = None
+submitScript = None
+os.system("chmod +x %s/submit.sh" % scratchDir)
+
+
