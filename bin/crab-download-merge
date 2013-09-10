@@ -1,0 +1,19 @@
+#!/bin/bash
+
+for SAMPLE in $*; do
+    [ -d $SAMPLE ] || continue
+    echo "=== Retrieving ${SAMPLE} ==="
+    [ -d $SAMPLE/unmerged ] || mkdir -p $SAMPLE/unmerged
+    FILES=`grep "newPfn = .*\.root" ${SAMPLE}/res/CMSSW_*.stdout | awk '{print $4}'`
+    NFILES=`echo $FILES | wc -w`
+    IFILE=0
+    for FILE in $FILES; do
+        FILENAME=`basename $FILE`
+        IFILE=$(($IFILE+1))
+        echo -ne "Downloading $FILE (${IFILE}/${NFILES})\r"
+        lcg-cp $FILE $SAMPLE/unmerged/$FILENAME
+    done
+
+    echo "=== Merging ${SAMPLE} ==="
+    hadd -f tree/$SAMPLE.root $SAMPLE/unmerged/fakeTree*.root
+done
