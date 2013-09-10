@@ -66,6 +66,9 @@ if os.path.exists(scratchDir):
             print "User canceled job creation."
             sys.exit()
 os.makedirs(scratchDir)
+os.makedirs("%s/log" % scratchDir)
+os.makedirs("%s/cfg" % scratchDir)
+os.makedirs("%s/out" % scratchDir)
 scratchDirFullPath = os.path.abspath(scratchDir)
 
 ## Write run script
@@ -75,7 +78,7 @@ print>>runScript, "cd %s/src" % os.environ["CMSSW_BASE"]
 print>>runScript, "eval `scram runtime -sh`"
 print>>runScript, "cd %s" % scratchDirFullPath
 print>>runScript, "SECTION=$1"
-print>>runScript, "cmsRun %s_${SECTION}_cfg.py" % prefix
+print>>runScript, "cmsRun cfg/%s_${SECTION}_cfg.py" % prefix
 runScript = None
 os.system("chmod +x %s/%s.sh" % (scratchDir, prefix))
 
@@ -136,9 +139,9 @@ nFiles = len(fileNames)
 nSection = int(ceil(1.0*nFiles/nFilePerSection)) ## round up, cover up remaining job fragment if exists
 for section in range(nSection):
     jobName = "%s %d" % (datasetName, section+1)
-    logFileName = "%s_%03d.log" % (prefix, section+1)
+    logFileName = "log/%s_%03d.log" % (prefix, section+1)
     print>>submitScript, "bsub -q %s -oo %s -J \"%s\" %s.sh %03d" % (jobQueue, logFileName, jobName, prefix, section+1)
-    runConfig = open("%s/%s_%03d_cfg.py" % (scratchDir, prefix, section+1), "w")
+    runConfig = open("%s/cfg/%s_%03d_cfg.py" % (scratchDir, prefix, section+1), "w")
     begin = section*nFilePerSection
     if section < nSection-1:
         end = begin+nFilePerSection
@@ -146,10 +149,10 @@ for section in range(nSection):
     else:
         process.source.fileNames = fileNames[begin:]
     if hasattr(process, 'TFileService'):
-        process.TFileService.fileName = '%s_%03d.root' % (outFilePrefixes['TFileService'], section+1)
+        process.TFileService.fileName = 'out/%s_%03d.root' % (outFilePrefixes['TFileService'], section+1)
     if hasattr(process, 'rivetAnalyzer'):
         outFilePrefix = process.rivetAnalyzer.OutputFile.value()[:-5]
-        process.rivetAnalyzer.OutputFile = '%s_%03d.aida' % (outFilePrefixes['rivetAnalyzer'], section+1)
+        process.rivetAnalyzer.OutputFile = 'out/%s_%03d.aida' % (outFilePrefixes['rivetAnalyzer'], section+1)
     runConfig.write(process.dumpPython())
     runConfig = None
 submitScript = None
