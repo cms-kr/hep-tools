@@ -15,5 +15,5 @@ for SAMPLE in $*; do
     done
 
     echo "=== Merging ${SAMPLE} ==="
-    hadd -f tree/$SAMPLE.root $SAMPLE/unmerged/fakeTree*.root
+    hadd -f $SAMPLE/$SAMPLE.root $SAMPLE/unmerged/fakeTree*.root
 done
