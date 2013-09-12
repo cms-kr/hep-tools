@@ -31,5 +31,6 @@ for SAMPLE in $*; do
     done
 
     echo "=== Merging ${SAMPLE} ==="
-    hadd -f $SAMPLE/$SAMPLE.root $SAMPLE/unmerged/fakeTree*.root
+    MERGEDFILENAME=$(cat $SAMPLE/share/crab.cfg | grep -m1 '^output_file' | awk -F'=' '{print $2}')
+    hadd -f $SAMPLE/$MERGEDFILENAME $SAMPLE/unmerged/*.root
 done
