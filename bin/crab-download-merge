@@ -1,36 +1,64 @@
-#!/bin/bash
+#!/usr/bin/env python
 
-for SAMPLE in $*; do
-    [ -d $SAMPLE ] || continue
-    echo "=== Retrieving ${SAMPLE} ==="
-    [ -d $SAMPLE/unmerged ] || mkdir -p $SAMPLE/unmerged
-    FILES=$(grep "newPfn = .*\.root" ${SAMPLE}/res/CMSSW_*.stdout | awk '{print $4}')
-    NFILES=$(echo $FILES | wc -w)
-    IFILE=0
-    for FILE in $FILES; do
-        FILENAME=$(basename $FILE)
-        IFILE=$(($IFILE+1))
-        JOBID=$(echo $FILENAME | awk -F_ '{print $2}')
-        if [ -f $SAMPLE/unmerged/$FILENAME ]; then
-            REMOTE=$(grep -m1 "^-rw.*${FILENAME}" ${SAMPLE}/res/CMSSW_${JOBID}.stdout | awk '{print $5" "$9}')
-            LOCAL=$(ls -l $SAMPLE/unmerged/$FILENAME | awk '{print $5" "$9}')
-            REMOTESIZE=$(echo $REMOTE | awk '{print $1}')
-            LOCALSIZE=$(echo $LOCAL | awk '{print $1}')
-            [ $REMOTESIZE == $LOCALSIZE ] && continue
-            echo "File already exists."
-            echo "    remote : $REMOTE"
-            echo "    local  : $LOCAL"
-            echo -n "Remove and get once again? [Y/N]"
-            read YN
-            if [ "_$YN" != _y -a "_$YN" != _Y ]; then
-                continue
-            fi
-        fi
-        echo -ne "Downloading $FILE (${IFILE}/${NFILES})\r"
-        lcg-cp $FILE $SAMPLE/unmerged/$FILENAME
-    done
+import sys, os
+import re
+from ConfigParser import ConfigParser
 
-    echo "=== Merging ${SAMPLE} ==="
-    MERGEDFILENAME=$(cat $SAMPLE/share/crab.cfg | grep -m1 '^output_file' | awk -F'=' '{print $2}')
-    hadd -f $SAMPLE/$MERGEDFILENAME $SAMPLE/unmerged/*.root
-done
+if len(sys.argv) < 2:
+    print "crab-download-merge: Download output root files in the SE and merge"
+    print "    Usage : crab-download-merge CRAB_WORKDIR"
+    sys.exit()
+sample = sys.argv[1]
+
+if not os.path.isdir(sample):
+    print "No such directory,", sample
+    sys.exit()
+
+## Analyze log file and list up file list
+print "==== Analyzing crab log files ===="
+downloadQueue = []
+outPath = os.path.join(sample, 'unmerged')
+if not os.path.exists(outPath):
+    os.makedirs(outPath)
+resPath = os.path.join(sample, 'res')
+for logFileName in os.listdir(resPath):
+    if not re.match('CMSSW_.*\.stdout', logFileName): continue
+    jobId = int(logFileName.split('.')[-2].split("_")[1])
+
+    logFileStr = open(os.path.join(resPath, logFileName)).read()
+    pfnStrs = re.findall("newPfn = .*\.root", logFileStr)
+    if len(pfnStrs) == 0:
+        print "No PFN in the log file %s. skip." % logFileName
+        continue
+    pfn = pfnStrs[0].strip().split()[-1]
+
+    fileName = os.path.basename(pfn)
+    fileInfoStrs = re.findall("-rw.*%s" % fileName, logFileStr)
+    if len(fileInfoStrs) == 0:
+        print "No file information in the log file %s. skip." % logFileName
+    fileSize = int(fileInfoStrs[0].strip().split()[4])
+
+    localFileName = os.path.join(outPath, fileName)
+    if os.path.exists(localFileName):
+        localFileSize = os.path.getsize(localFileName)
+        if fileSize == localFileSize:
+            print "File %s is already downloaded in %s. skip" % (fileName, outPath)
+            continue
+
+    downloadQueue.append( (jobId, pfn, fileSize) )
+print "Analyzed crab log files."
+
+## Start download
+print "==== Starting download ===="
+n = len(downloadQueue)
+for i, fileInfo in enumerate(downloadQueue):
+    #print "Downloading %s (%d/%d)\r" % (pfn, i+1, n),
+    print "Downloading %s (%d/%d)\r" % (os.path.basename(pfn), i+1, n),
+print "\nDownload done."
+
+print "==== Merging files ===="
+cfg = ConfigParser()
+cfg.read('%s/share/crab.cfg' % sample)
+outFileName = os.path.join(sample, cfg.get('CMSSW', 'output_file'))
+allRootFiles = [os.path.join(outPath, x) for x in os.listdir(outPath) if '.root' in x]
+os.system("hadd -f %s %s" % (outFileName, " ".join(allRootFiles)))
