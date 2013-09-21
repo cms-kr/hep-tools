@@ -6,19 +6,25 @@ from ConfigParser import ConfigParser
 
 doCopy  = True
 doMerge = True
+doFileList = False
 if '--nocopy' in sys.argv:
     doCopy = False
     sys.argv.remove('--nocopy')
 if '--nomerge' in sys.argv:
     doMerge = False
     sys.argv.remove('--nomerge')
+if '--dumplist' in sys.argv:
+    doFileList = True
+    sys.argv.remove('--dumplist')
 
-if len(sys.argv) < 2:
+if len(sys.argv) < 2 or '-h' in sys.argv:
     print "crab-download-merge: Download output root files in the SE and merge"
     print "  Usage : crab-download-merge CRAB_WORKDIR"
     print "  Options"
-    print "    --nomerge : No merge"
-    print "    --nocopy  : Do not download"
+    print "    -h --help  : print this message"
+    print "    --nomerge  : No merge"
+    print "    --nocopy   : Do not download"
+    print "    --dumplist : dump list of PFNs"
     sys.exit()
 
 sample = sys.argv[1]
@@ -38,6 +44,7 @@ nTotal    = 0
 nWithPFN  = 0
 nWithFile = 0
 nDownload = 0
+allPFNs = []
 for logFileName in os.listdir(resPath):
     if not re.match('CMSSW_.*\.stdout', logFileName): continue
     jobId = int(logFileName.split('.')[-2].split("_")[1])
@@ -58,6 +65,8 @@ for logFileName in os.listdir(resPath):
         continue
     fileSize = int(fileInfoStrs[0].strip().split()[4])
     nWithFile += 1
+
+    if doFileList: allPFNs.append(pfn)
 
     localFileName = os.path.join(outPath, fileName)
     if os.path.exists(localFileName):
@@ -80,6 +89,7 @@ if doCopy:
     n = len(downloadQueue)
     for i, fileInfo in enumerate(downloadQueue):
         #print "Downloading %s (%d/%d)\r" % (pfn, i+1, n),
+        jobId, pfn, fileSize = fileInfo
         fileName = os.path.basename(pfn)
         print "Downloading %s (%d/%d)\r" % (fileName, i+1, n),
         os.system('lcg-cp %s %s/%s' % (pfn, outPath, fileName))
@@ -92,3 +102,13 @@ if doMerge:
     outFileName = os.path.join(sample, cfg.get('CMSSW', 'output_file'))
     allRootFiles = [os.path.join(outPath, x) for x in os.listdir(outPath) if '.root' in x]
     os.system("hadd -f %s %s" % (outFileName, " ".join(allRootFiles)))
+
+if doFileList:
+    fout = open('%s/pfns.txt' % sample, 'w')
+    print>>fout, "#Analyzed crab log files."
+    print>>fout, "#  nTotal    =", nTotal
+    print>>fout, "#  nWithPFN  =", nWithPFN
+    print>>fout, "#  nWithFile =", nWithFile
+    for pfn in allPFNs:
+        print>>fout, pfn
+    fout = None
