@@ -11,6 +11,7 @@ def usage():
     print "    -n NFILES_PER_SECTION : Number of root files per section"
     print "    -o OUTPUT_DIRECTORY   : Output directory name"
     print ""
+    print "    -t DATATYPE           : Type of dataset (cmg, relval, data)"
     print "    -d DATASET            : Name of CMG dataset. You can find dataset name using cmg-list-datasets command"
     print "                            This option can be omitted; then it will read root files in the cfg file"
     print ""
@@ -38,11 +39,17 @@ try:
     datasetName = args[args.index('-d')+1]
 except:
     datasetName = None
+if datasetName != None:
+    datasetBase = {
+        'cmg':'/eos/cms/store/cmst3/user/cmgtools/CMG/',
+        'relval':'/eos/cms/store/relval/',
+        'data':'/eos/cms/store/data/',
+    }[args[args.index('-t')+1]]
 
 try:
     fileNamePrefix = args[args.index('--prefix')+1]
 except:
-    fileNamePrefix = 'cmgTuple_'
+    fileNamePrefix = ""
 
 ### Other optional arguments
 if '-q' in args:
@@ -95,7 +102,7 @@ if datasetName == None:
 else:
     ## If dataset name is specified, load dataset names from eos
     eosCmd = '/afs/cern.ch/project/eos/installation/0.2.31/bin/eos.select'
-    dataPath = '/store/cmst3/user/cmgtools/CMG/' + datasetName
+    dataPath = datasetBase + datasetName
     fileNamesIn = os.popen("%s ls %s | sort -n -k2 -t_" % (eosCmd, dataPath)).readlines()
     fileNames = []
     lenPrefix = len(fileNamePrefix)
