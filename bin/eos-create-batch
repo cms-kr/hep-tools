@@ -41,9 +41,9 @@ except:
     datasetName = None
 if datasetName != None:
     datasetBase = {
-        'cmg':'/eos/cms/store/cmst3/user/cmgtools/CMG/',
-        'relval':'/eos/cms/store/relval/',
-        'data':'/eos/cms/store/data/',
+        'cmg':'/store/cmst3/user/cmgtools/CMG/',
+        'relval':'/store/relval/',
+        'data':'/store/data/',
     }[args[args.index('-t')+1]]
 
 try:
