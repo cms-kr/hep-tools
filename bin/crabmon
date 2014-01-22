@@ -65,6 +65,9 @@ class Line:
             lineNum -= 1
             line = lines[lineNum]
             if line[:2] == "ID": break
+        if lineNum == 0:
+            os.system("crab -c %s -status" % self.name)
+            return self.readLog(name)
         indexRunning = []
         indexDone = []
         indexClear = []
@@ -77,6 +80,7 @@ class Line:
             if not line[0].isdigit(): continue
             items = line.split()
             index, isEnd, status, action = items[:4]
+            if not index.isdigit(): continue
             index = int(index)
             if status == "Running":
                 indexRunning.append(index)
