@@ -49,6 +49,7 @@ while i < len(sys.argv)-1:
 if '--jobName' not in opts: usage()
 uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
 jobName = opts['--jobName']+"-"+uniqueID
+jobDir = os.path.abspath(jobName)
 if '--fileList' not in opts: usage()
 fileList = opts['--fileList']
 if not os.path.exists(fileList):
@@ -62,7 +63,7 @@ if '_cfg.py' != cfgFileName[-min(7,len(cfgFileName)):]: usage()
 if not os.path.exists(cfgFileName):
     print "ERROR: Cannot find config file", cfgFileName
     sys.exit()
-if os.path.isdir(jobName):
+if os.path.isdir(jobDir):
     print "ERROR: Output directory already exists."
     sys.exit()
 doSubmit = ('-n' not in opts)
@@ -71,7 +72,8 @@ if '--scratchDir' in opts:
     scratchDir = opts['--scratchDir']
 else:
     #scratchDir = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
-    scratchDir = jobName
+    scratchDir = jobDir
+scratchDir = os.path.abspath(scratchDir)
 
 # Check necessary envvars
 if 'CMSSW_VERSION' not in os.environ:
@@ -80,8 +82,8 @@ if 'CMSSW_VERSION' not in os.environ:
 
 ## Prepare working directory
 print "@@ Preparing batch jobs in", jobName, "..."
-os.makedirs(jobName)
-if scratchDir != jobName:
+os.makedirs(jobDir)
+if scratchDir != jobDir:
     print "@@ Preparing output scratch directory in", scratchDir, "..."
     os.makedirs(scratchDir)
 
@@ -103,7 +105,7 @@ files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
 print "@@ Loading python cfg..."
 sys.path.append('.')
 cout = sys.stdout
-sys.stdout = open("%s/log.txt" % jobName, "w")
+sys.stdout = open("%s/log.txt" % jobdir, "w")
 process = __import__('.'.join(cfgFileName.split('.')[:-1])).process
 sys.stdout = cout
 
@@ -126,7 +128,7 @@ for section in range(nSection):
     for modName in outFileModes:
         getattr(process, modName).fileName = "%s/%s_%03d.root" % (scratchDir, outFileModes[modName][:-5], section)
 
-    cfgFileName = "%s/ntuple_%03d_cfg.py" % (jobName, section)
+    cfgFileName = "%s/ntuple_%03d_cfg.py" % (jobDir, section)
     open(cfgFileName, "w").write(process.dumpPython())
 
 ## Checking voms proxy
@@ -135,29 +137,29 @@ if doGrid:
     if os.system("voms-proxy-info -exists --hours 8") != 0:
         os.system("voms-proxy-init -voms cms --valid 144:00")
     uid = os.getuid()
-    shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (jobName, uid))
+    shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (jobDir, uid))
 
 ## Write run script
 print "@@ Writing run script..."
-runFileName = "%s/run.sh" % jobName
+runFileName = "%s/run.sh" % jobDir
 fout = open(runFileName, "w")
 print>>fout, """#!/bin/bash
 SECTION=`printf %%03d $PBS_ARRAYID`
 cd %s
 eval `scram runtime -sh`
-cd %s""" % (os.environ["CMSSW_BASE"], os.path.abspath(jobName))
+cd %s""" % (os.environ["CMSSW_BASE"], jobDir)
 if doGrid:
     print>>fout, "cp -f x509up_u%d /tmp/" % uid
 print>>fout, """echo BEGIN `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
 time cmsRun ntuple_${SECTION}_cfg.py &> %s/ntuple_${SECTION}.log
 if [ $? == 0 ]; then
     echo ENDED `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
-fi""" % (os.path.abspath(jobName), scratchDir, os.path.abspath(jobName))
+fi""" % (jobDir, scratchDir, jobDir)
 fout = None
 os.chmod(runFileName, os.stat(runFileName).st_mode | stat.S_IEXEC)
 
 print "@@ Writing submit script..."
-submitFileName = "%s/submit.sh" % jobName
+submitFileName = "%s/submit.sh" % jobDir
 fout = open(submitFileName, "w")
 print>>fout, """#!/bin/bash
 qsub -N %s -d `pwd` -q batch -t 0-%d run.sh""" % (jobName, nSection-1)
@@ -165,9 +167,9 @@ fout = None
 os.chmod(submitFileName, os.stat(submitFileName).st_mode | stat.S_IEXEC)
 if doSubmit:
     print "@@ Submitting jobs..."
-    os.system("ssh uosaf0008 'cd %s;./submit.sh'" % os.path.abspath(jobName))
+    os.system("ssh uosaf0008 'cd %s;./submit.sh'" % jobdir)
 else:
     print "@@ Jobs are prepared. You can submit jobs with following command:"
-    print "ssh uosaf0008 'cd %s;./submit.sh'" % os.path.abspath(jobName)
+    print "ssh uosaf0008 'cd %s;./submit.sh'" % jobDir
 
 print "@@ Done."
