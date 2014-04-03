@@ -9,7 +9,7 @@ def usage():
     print sys.argv[0], " : create pbs jobs"
     print "  Mandatory options :"
     print "   --jobName  NAME                  Name of job"
-    print "   --files    DATA_FILES            File list text file"
+    print "   --fileList DATA_FILES            File list text file"
     print "   --maxFiles N                     Maximum number of files per job"
     print "   --cfg      CONFIG_FILE_cfg.py    Configuration file"
     print "  Optional :"
@@ -49,7 +49,7 @@ while i < len(sys.argv)-1:
 if '--jobName' not in opts: usage()
 uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
 jobName = opts['--jobName']+"-"+uniqueID
-if '--files' not in opts: usage()
+if '--fileList' not in opts: usage()
 fileList = opts['--fileList']
 if not os.path.exists(fileList):
     print "ERROR: Cannot find file list", fileList
