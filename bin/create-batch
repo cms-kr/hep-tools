@@ -70,7 +70,8 @@ doGrid = ('--nogrod' not in opts)
 if '--scratchDir' in opts:
     scratchDir = opts['--scratchDir']
 else:
-    scratchDir = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
+    #scratchDir = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
+    scratchDir = jobName
 
 # Check necessary envvars
 if 'CMSSW_VERSION' not in os.environ:
@@ -80,8 +81,9 @@ if 'CMSSW_VERSION' not in os.environ:
 ## Prepare working directory
 print "@@ Preparing batch jobs in", jobName, "..."
 os.makedirs(jobName)
-print "@@ Preparing output scratch directory in", scratchDir, "..."
-os.makedirs(scratchDir)
+if scratchDir != jobName:
+    print "@@ Preparing output scratch directory in", scratchDir, "..."
+    os.makedirs(scratchDir)
 
 ## Collect root files
 files = []
