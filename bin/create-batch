@@ -15,6 +15,7 @@ def usage():
     print "  Optional :"
     print "   -n                               Do not submit jobs to batch"
     print "   --scratchDir SCRATCH_DIR         SCRATCH DIRECTORY"
+    print "   --nogrid                         GRID certificate is not necessary"
     sys.exit()
 
 # Parse arguments
@@ -65,6 +66,7 @@ if os.path.isdir(jobName):
     print "ERROR: Output directory already exists."
     sys.exit()
 doSubmit = ('-n' not in opts)
+doGrid = ('--nogrod' not in opts)
 if '--scratchDir' in opts:
     scratchPath = opts['--scratchPath']
 else:
@@ -126,11 +128,12 @@ for section in range(nSection):
     open(cfgFileName, "w").write(process.dumpPython())
 
 ## Checking voms proxy
-print "@@ Checking grid certificate to access files..."
-if os.system("voms-proxy-info -exists --hours 8") != 0:
-    os.system("voms-proxy-init -voms cms --valid 144:00")
-uid = os.getuid()
-shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (jobName, uid))
+if doGrid:
+    print "@@ Checking grid certificate to access files..."
+    if os.system("voms-proxy-info -exists --hours 8") != 0:
+        os.system("voms-proxy-init -voms cms --valid 144:00")
+    uid = os.getuid()
+    shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (jobName, uid))
 
 ## Write run script
 print "@@ Writing run script..."
@@ -140,15 +143,14 @@ print>>fout, """#!/bin/bash
 SECTION=`printf %%03d $PBS_ARRAYID`
 cd %s
 eval `scram runtime -sh`
-cd %s
-cp -f x509up_u%d /tmp/
-echo BEGIN `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
+cd %s""" % (os.environ["CMSSW_BASE"], os.path.abspath(jobName))
+if doGrid:
+    print>>fout, "cp -f x509up_u%d /tmp/" % uid
+print>>fout, """echo BEGIN `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
 time cmsRun ntuple_${SECTION}_cfg.py &> %s/ntuple_${SECTION}.log
 if [ $? == 0 ]; then
     echo ENDED `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
-fi""" % (
-    os.environ["CMSSW_BASE"], os.path.abspath(jobName), uid,
-    os.path.abspath(jobName), scratchPath, os.path.abspath(jobName))
+fi""" % (os.path.abspath(jobName), scratchPath, os.path.abspath(jobName))
 fout = None
 os.chmod(runFileName, os.stat(runFileName).st_mode | stat.S_IEXEC)
 
