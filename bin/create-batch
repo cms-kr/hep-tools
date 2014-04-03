@@ -68,9 +68,9 @@ if os.path.isdir(jobName):
 doSubmit = ('-n' not in opts)
 doGrid = ('--nogrod' not in opts)
 if '--scratchDir' in opts:
-    scratchPath = opts['--scratchPath']
+    scratchDir = opts['--scratchDir']
 else:
-    scratchPath = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
+    scratchDir = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
 
 # Check necessary envvars
 if 'CMSSW_VERSION' not in os.environ:
@@ -80,8 +80,8 @@ if 'CMSSW_VERSION' not in os.environ:
 ## Prepare working directory
 print "@@ Preparing batch jobs in", jobName, "..."
 os.makedirs(jobName)
-print "@@ Preparing output scratch directory in", scratchPath, "..."
-os.makedirs(scratchPath)
+print "@@ Preparing output scratch directory in", scratchDir, "..."
+os.makedirs(scratchDir)
 
 ## Collect root files
 files = []
@@ -122,7 +122,7 @@ for section in range(nSection):
 
     process.source.fileNames = files[begin:end]
     for modName in outFileModes:
-        getattr(process, modName).fileName = "%s/%s_%03d.root" % (scratchPath, outFileModes[modName][:-5], section)
+        getattr(process, modName).fileName = "%s/%s_%03d.root" % (scratchDir, outFileModes[modName][:-5], section)
 
     cfgFileName = "%s/ntuple_%03d_cfg.py" % (jobName, section)
     open(cfgFileName, "w").write(process.dumpPython())
@@ -150,7 +150,7 @@ print>>fout, """echo BEGIN `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.l
 time cmsRun ntuple_${SECTION}_cfg.py &> %s/ntuple_${SECTION}.log
 if [ $? == 0 ]; then
     echo ENDED `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
-fi""" % (os.path.abspath(jobName), scratchPath, os.path.abspath(jobName))
+fi""" % (os.path.abspath(jobName), scratchDir, os.path.abspath(jobName))
 fout = None
 os.chmod(runFileName, os.stat(runFileName).st_mode | stat.S_IEXEC)
 
