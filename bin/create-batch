@@ -99,13 +99,13 @@ if nFiles == 0:
     print "ERROR: Empty dataset."
     sys.exit()
 ## Sort files by its key "i", filename_[i]_[j]_hash.root
-files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
+#files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
 
 ## Load cfg file
 print "@@ Loading python cfg..."
 sys.path.append('.')
 cout = sys.stdout
-sys.stdout = open("%s/log.txt" % jobdir, "w")
+sys.stdout = open("%s/log.txt" % jobDir, "w")
 process = __import__('.'.join(cfgFileName.split('.')[:-1])).process
 sys.stdout = cout
 
@@ -167,7 +167,7 @@ fout = None
 os.chmod(submitFileName, os.stat(submitFileName).st_mode | stat.S_IEXEC)
 if doSubmit:
     print "@@ Submitting jobs..."
-    os.system("ssh uosaf0008 'cd %s;./submit.sh'" % jobdir)
+    os.system("ssh uosaf0008 'cd %s;./submit.sh'" % jobDir)
 else:
     print "@@ Jobs are prepared. You can submit jobs with following command:"
     print "ssh uosaf0008 'cd %s;./submit.sh'" % jobDir
