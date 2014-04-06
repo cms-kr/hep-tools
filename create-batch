@@ -80,6 +80,15 @@ if 'CMSSW_VERSION' not in os.environ:
     print "ERROR: You have to set up CMSSW. Run cmsenv in your working directory."
     sys.exit()
 
+# Site dependent configurations
+hostName = os.environ['HOSTNAME']
+if 'uos.ac.kr' in hostName:
+    submitCommand = 'ssh uosaf0008'
+    queue = 'batch'
+else:
+    print 'Automatic job submission not available on this site.'
+    doSubmit = False
+
 ## Prepare working directory
 print "@@ Preparing batch jobs in", jobName, "..."
 os.makedirs(jobDir)
@@ -128,7 +137,7 @@ for section in range(nSection):
     for modName in outFileModes:
         getattr(process, modName).fileName = "%s/%s_%03d.root" % (scratchDir, outFileModes[modName][:-5], section)
 
-    cfgFileName = "%s/ntuple_%03d_cfg.py" % (jobDir, section)
+    cfgFileName = "%s/job_%03d_cfg.py" % (jobDir, section)
     open(cfgFileName, "w").write(process.dumpPython())
 
 ## Checking voms proxy
@@ -150,10 +159,10 @@ eval `scram runtime -sh`
 cd %s""" % (os.environ["CMSSW_BASE"], jobDir)
 if doGrid:
     print>>fout, "cp -f x509up_u%d /tmp/" % uid
-print>>fout, """echo BEGIN `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
-time cmsRun ntuple_${SECTION}_cfg.py &> %s/ntuple_${SECTION}.log
+print>>fout, """echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
+time cmsRun job_${SECTION}_cfg.py &> %s/job_${SECTION}.log
 if [ $? == 0 ]; then
-    echo ENDED `date` cmsRun ntuple_${SECTION}_cfg.py >> %s/submit.log
+    echo ENDED `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
 fi""" % (jobDir, scratchDir, jobDir)
 fout = None
 os.chmod(runFileName, os.stat(runFileName).st_mode | stat.S_IEXEC)
@@ -162,14 +171,14 @@ print "@@ Writing submit script..."
 submitFileName = "%s/submit.sh" % jobDir
 fout = open(submitFileName, "w")
 print>>fout, """#!/bin/bash
-qsub -N %s -d `pwd` -q batch -t 0-%d run.sh""" % (jobName, nSection-1)
+qsub -N %s -d `pwd` -q %s -t 0-%d run.sh""" % (jobName, queue, nSection-1)
 fout = None
 os.chmod(submitFileName, os.stat(submitFileName).st_mode | stat.S_IEXEC)
 if doSubmit:
     print "@@ Submitting jobs..."
-    os.system("ssh uosaf0008 'cd %s;./submit.sh'" % jobDir)
+    os.system("%s 'cd %s;./submit.sh'" % (submitCommand, jobDir) )
 else:
     print "@@ Jobs are prepared. You can submit jobs with following command:"
-    print "ssh uosaf0008 'cd %s;./submit.sh'" % jobDir
+    print "%s 'cd %s;./submit.sh'" % (submitCommand, jobDir)
 
 print "@@ Done."
