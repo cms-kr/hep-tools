@@ -152,9 +152,12 @@ if doGrid:
     print>>fout, "cp -f x509up_u%d /tmp/" % uid
 print>>fout, """echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
 time cmsRun job_${SECTION}_cfg.py &> %s/job_${SECTION}.log
-if [ $? == 0 ]; then
+EXITCODE=$?
+if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
-fi""" % (jobDir, scratchDir, jobDir)
+else
+    echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
+fi""" % (jobDir, scratchDir, jobDir, jobDir)
 fout = None
 os.chmod(runFileName, os.stat(runFileName).st_mode | stat.S_IEXEC)
 
