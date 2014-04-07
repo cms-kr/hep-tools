@@ -166,7 +166,7 @@ hostName = os.environ['HOSTNAME']
 print>>fout, "#!/bin/bash"
 if 'cern.ch' in hostName:
     for section in range(nSection):
-        print>>fout, "bsub -J %s[%d] -q 8nh run.sh %d" % (jobName, section, section)
+        print>>fout, "bsub -J %s.%d -q 8nh run.sh %d" % (jobName, section, section)
 elif 'uos.ac.kr' in hostName:
     print>>fout, "qsub -N %s -d `pwd` -q batch' -t 0-%d run.sh" % (jobName, nSection-1)
 else:
@@ -182,6 +182,6 @@ if doSubmit:
         os.system("cd %s;./submit.sh" % jobDir)
 else:
     print "@@ Jobs are prepared. You can submit jobs with following command:"
-    print "%s 'cd %s;./submit.sh'" % (submitCommand, jobDir)
+    print "cd %s;./submit.sh" % (jobDir)
 
 print "@@ Done."
