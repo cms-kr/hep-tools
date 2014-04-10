@@ -1,0 +1,191 @@
+#!/usr/bin/env python
+
+import sys, os
+import stat, shutil
+from math import ceil
+from datetime import datetime
+
+def usage():
+    print sys.argv[0], " : create pbs jobs"
+    print "  Mandatory options :"
+    print "   --jobName  NAME                  Name of job"
+    print "   --fileList DATA_FILES            File list text file"
+    print "   --maxFiles N                     Maximum number of files per job"
+    print "   --cfg      CONFIG_FILE_cfg.py    Configuration file"
+    print "  Optional :"
+    print "   -n                               Do not submit jobs to batch"
+    print "   --scratchDir SCRATCH_DIR         SCRATCH DIRECTORY"
+    print "   -g                               Grid certificate is required"
+    sys.exit()
+
+# Parse arguments
+if len(sys.argv) < 2: usage()
+opts = {}
+args = []
+i = 0
+while i < len(sys.argv)-1:
+    i += 1
+    arg = sys.argv[i]
+
+    arg1, arg2 = None, None
+    if len(arg) > 2 and arg[:2] == '--':
+        if '=' in arg:
+            arg1 = arg.split('=')[0]
+            arg2 = '='.join(arg.split('=')[1:])
+        elif i+1 < len(sys.argv):
+            arg1 = arg
+            arg2 = sys.argv[i+1]
+            i += 1
+        else:
+            print "ERROR: Value must be followed after the option", arg
+            sys.exit()
+        opts[arg1] = arg2
+    elif arg[0] == '-':
+        opts[arg] = True
+    else:
+        args.append(arg)
+
+## Mandatory options
+if '--jobName' not in opts: usage()
+uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
+jobName = opts['--jobName']+"-"+uniqueID
+jobDir = os.path.abspath(jobName)
+if '--fileList' not in opts: usage()
+fileList = opts['--fileList']
+if not os.path.exists(fileList):
+    print "ERROR: Cannot find file list", fileList
+    sys.exit()
+if '--maxFiles' not in opts: usage()
+maxFiles = int(opts['--maxFiles'])
+if '--cfg' not in opts: usage()
+cfgFileName = opts['--cfg']
+if '_cfg.py' != cfgFileName[-min(7,len(cfgFileName)):]: usage()
+if not os.path.exists(cfgFileName):
+    print "ERROR: Cannot find config file", cfgFileName
+    sys.exit()
+if os.path.isdir(jobDir):
+    print "ERROR: Output directory already exists."
+    sys.exit()
+doSubmit = ('-n' not in opts)
+doGrid = ('-g' in opts)
+if '--scratchDir' in opts:
+    scratchDir = opts['--scratchDir']
+else:
+    #scratchDir = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
+    scratchDir = jobDir
+scratchDir = os.path.abspath(scratchDir)
+
+# Check necessary envvars
+if 'CMSSW_VERSION' not in os.environ:
+    print "ERROR: You have to set up CMSSW. Run cmsenv in your working directory."
+    sys.exit()
+
+## Prepare working directory
+print "@@ Preparing batch jobs in", jobName, "..."
+os.makedirs(jobDir)
+if scratchDir != jobDir:
+    print "@@ Preparing output scratch directory in", scratchDir, "..."
+    os.makedirs(scratchDir)
+
+## Collect root files
+files = []
+for f in open(fileList).readlines():
+    f = f.strip()
+    if len(f) < 5: continue
+    if '#' == f[0] or '.root' != f[-5:]: continue
+    files.append(f)
+nFiles = len(files)
+if nFiles == 0:
+    print "ERROR: Empty dataset."
+    sys.exit()
+## Sort files by its key "i", filename_[i]_[j]_hash.root
+#files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
+
+## Load cfg file
+print "@@ Loading python cfg..."
+sys.path.append('.')
+cout = sys.stdout
+sys.stdout = open("%s/log.txt" % jobDir, "w")
+process = __import__('.'.join(cfgFileName.split('.')[:-1])).process
+process.maxEvents.input = -1
+sys.stdout = cout
+
+## Memorise to modify output file names
+print "@@ Setting output modules..."
+outFileModes = {}
+if hasattr(process, 'TFileService'):
+    outFileModes['TFileService'] = process.TFileService.fileName.value()
+for modName in process.outputModules_():
+    outFileModes[modName] = getattr(process, modName).fileName.value()
+
+## Split files into jobs and write python cfg
+print "@@ Splitting jobs..."
+nSection = int(ceil(1.0*nFiles/maxFiles))
+for section in range(nSection):
+    begin = section*maxFiles
+    end = min(begin+maxFiles, nFiles)
+
+    process.source.fileNames = files[begin:end]
+    for modName in outFileModes:
+        getattr(process, modName).fileName = "%s/%s_%03d.root" % (scratchDir, outFileModes[modName][:-5], section)
+
+    cfgFileName = "%s/job_%03d_cfg.py" % (jobDir, section)
+    open(cfgFileName, "w").write(process.dumpPython())
+
+## Checking voms proxy
+if doGrid:
+    print "@@ Checking grid certificate to access files..."
+    if os.system("voms-proxy-info -exists --hours 8") != 0:
+        os.system("voms-proxy-init -voms cms --valid 144:00")
+    uid = os.getuid()
+    shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (jobDir, uid))
+
+## Write run script
+print "@@ Writing run script..."
+runFileName = "%s/run.sh" % jobDir
+fout = open(runFileName, "w")
+print>>fout, """#!/bin/bash
+SECTION=`printf %%03d $PBS_ARRAYID`
+cd %s
+eval `scram runtime -sh`
+cd %s""" % (os.environ["CMSSW_BASE"], jobDir)
+if doGrid:
+    print>>fout, "cp -f x509up_u%d /tmp/" % uid
+print>>fout, """echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
+time cmsRun job_${SECTION}_cfg.py &> %s/job_${SECTION}.log
+EXITCODE=$?
+if [ $EXITCODE == 0 ]; then
+    echo ENDED `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
+else
+    echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
+fi""" % (jobDir, scratchDir, jobDir, jobDir)
+fout = None
+os.chmod(runFileName, os.stat(runFileName).st_mode | stat.S_IEXEC)
+
+print "@@ Writing submit script..."
+submitFileName = "%s/submit.sh" % jobDir
+fout = open(submitFileName, "w")
+## Get hostName for site-dependent part of job submission
+hostName = os.environ['HOSTNAME']
+print>>fout, "#!/bin/bash"
+if 'lxplus' in hostName:
+    for section in range(nSection):
+        print>>fout, "bsub -J %s.%d -q 8nh run.sh %d" % (jobName, section, section)
+elif 'uos.ac.kr' in hostName:
+    print>>fout, "qsub -N %s -d `pwd` -q batch -t 0-%d run.sh" % (jobName, nSection-1)
+else:
+    print 'Automatic job submission not available on this site.'
+    doSubmit = False
+fout = None
+os.chmod(submitFileName, os.stat(submitFileName).st_mode | stat.S_IEXEC)
+if doSubmit:
+    print "@@ Submitting jobs..."
+    if 'uos.ac.kr' in hostName:
+        os.system("ssh uosaf0008 'cd %s;./submit.sh'" % jobDir)
+    else:
+        os.system("cd %s;./submit.sh" % jobDir)
+else:
+    print "@@ Jobs are prepared. You can submit jobs with following command:"
+    print "cd %s;./submit.sh" % (jobDir)
+
+print "@@ Done."
