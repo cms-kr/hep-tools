@@ -145,7 +145,11 @@ print "@@ Writing run script..."
 runFileName = "%s/run.sh" % jobDir
 fout = open(runFileName, "w")
 print>>fout, """#!/bin/bash
-SECTION=`printf %%03d $PBS_ARRAYID`
+if [ _$PBS_ARRAYID != '_' ]; then
+    SECTION=`printf %%03d $PBS_ARRAYID`
+else
+    SECTION=$1
+fi
 cd %s
 eval `scram runtime -sh`
 cd %s""" % (os.environ["CMSSW_BASE"], jobDir)
