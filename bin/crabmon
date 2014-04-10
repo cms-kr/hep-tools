@@ -86,13 +86,18 @@ class Line:
                 indexRunning.append(index)
             elif status == "Done":
                 indexDone.append(index)
+            elif status == "Aborted":
+                indexToResubmit.append(index)
             elif status == "Retrieved" and action == "Cleared":
                 exeCode = int(items[4])
-                jobCode = int(items[5])
-                if exeCode == 0 and jobCode == 0:
-                    indexClear.append(index)
-                else:
+                if exeCode != 0:
                     indexToResubmit.append(index)
+                else:
+                    jobCode = int(items[5])
+                    if jobCode == 0:
+                        indexClear.append(index)
+                    else:
+                        indexToResubmit.append(index)
             nJobs += 1
         if len(indexToResubmit) > 0:
             print "@@ Indices to resubmit:"
