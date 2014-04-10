@@ -107,6 +107,7 @@ sys.path.append('.')
 cout = sys.stdout
 sys.stdout = open("%s/log.txt" % jobDir, "w")
 process = __import__('.'.join(cfgFileName.split('.')[:-1])).process
+process.maxEvents.input = -1
 sys.stdout = cout
 
 ## Memorise to modify output file names
@@ -167,7 +168,7 @@ fout = open(submitFileName, "w")
 ## Get hostName for site-dependent part of job submission
 hostName = os.environ['HOSTNAME']
 print>>fout, "#!/bin/bash"
-if 'cern.ch' in hostName:
+if 'lxplus' in hostName:
     for section in range(nSection):
         print>>fout, "bsub -J %s.%d -q 8nh run.sh %d" % (jobName, section, section)
 elif 'uos.ac.kr' in hostName:
