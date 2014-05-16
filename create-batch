@@ -174,7 +174,7 @@ hostName = os.environ['HOSTNAME']
 print>>fout, "#!/bin/bash"
 if 'lxplus' in hostName:
     for section in range(nSection):
-        print>>fout, "bsub -J %s.%d -q 8nh run.sh %d" % (jobName, section, section)
+        print>>fout, "bsub -J %s.%d -q 8nh run.sh %03d" % (jobName, section, section)
 elif 'uos.ac.kr' in hostName:
     print>>fout, "qsub -N %s -d `pwd` -q batch -t 0-%d run.sh" % (jobName, nSection-1)
 else:
