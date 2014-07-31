@@ -47,8 +47,8 @@ while i < len(sys.argv)-1:
 
 ## Mandatory options
 if '--jobName' not in opts: usage()
-uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
-jobName = opts['--jobName']+"-"+uniqueID
+#uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
+jobName = opts['--jobName']#+"-"+uniqueID
 jobDir = os.path.abspath(jobName)
 if '--fileList' not in opts: usage()
 fileList = opts['--fileList']
