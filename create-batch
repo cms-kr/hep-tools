@@ -13,6 +13,7 @@ def usage():
     print "   --maxFiles N                     Maximum number of files per job"
     print "   --cfg      CONFIG_FILE_cfg.py    Configuration file"
     print "  Optional :"
+    print "   --queue QUEUE_NAME               Set the batch queue name"
     print "   -n                               Do not submit jobs to batch"
     print "   --scratchDir SCRATCH_DIR         SCRATCH DIRECTORY"
     print "   -g                               Grid certificate is required"
@@ -74,6 +75,10 @@ else:
     #scratchDir = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
     scratchDir = jobDir
 scratchDir = os.path.abspath(scratchDir)
+if '--queue' in opts:
+    queue = opts['--queue']
+else:
+    queue = None
 
 # Check necessary envvars
 if 'CMSSW_VERSION' not in os.environ:
@@ -173,10 +178,15 @@ fout = open(submitFileName, "w")
 hostName = os.environ['HOSTNAME']
 print>>fout, "#!/bin/bash"
 if 'lxplus' in hostName:
+    if queue == None: queue = '8nh'
     for section in range(nSection):
-        print>>fout, "bsub -J %s.%d -q 8nh run.sh %03d" % (jobName, section, section)
+        print>>fout, "bsub -J %s.%d -q %s run.sh %03d" % (jobName, section, queue, section)
 elif 'uos.ac.kr' in hostName:
-    print>>fout, "qsub -N %s -d `pwd` -q batch -t 0-%d run.sh" % (jobName, nSection-1)
+    if queue == None: queue = 'batch'
+    # Turn off PBS_ARRAY due to openpbs bug
+    # print>>fout, "qsub -N %s -d `pwd` -q %s -t 0-%d run.sh" % (jobName, queue, nSection-1)
+    for section in range(nSection):
+        print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh %03d" % (jobName, section, queue, section)
 else:
     print 'Automatic job submission not available on this site.'
     doSubmit = False
