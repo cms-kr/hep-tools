@@ -186,7 +186,7 @@ elif 'uos.ac.kr' in hostName:
     # Turn off PBS_ARRAY due to openpbs bug
     # print>>fout, "qsub -N %s -d `pwd` -q %s -t 0-%d run.sh" % (jobName, queue, nSection-1)
     for section in range(nSection):
-        print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh %03d" % (jobName, section, queue, section)
+        print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh -vPBS_ARRAYID=%03d" % (jobName, section, queue, section)
 else:
     print 'Automatic job submission not available on this site.'
     doSubmit = False
