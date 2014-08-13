@@ -150,8 +150,8 @@ print "@@ Writing run script..."
 runFileName = "%s/run.sh" % jobDir
 fout = open(runFileName, "w")
 print>>fout, """#!/bin/bash
-if [ _$SECTION != '_' ]; then
-    SECTION=`printf %%03d $SECTION`
+if [ _$PBS_ARRAYID != '_' ]; then
+    SECTION=`printf %%03d $PBS_ARRAYID`
 else
     SECTION=$1
 fi
