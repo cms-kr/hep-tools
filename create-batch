@@ -188,6 +188,10 @@ elif 'uos.ac.kr' in hostName:
     # print>>fout, "qsub -N %s -d `pwd` -q %s -t 0-%d run.sh" % (jobName, queue, nSection-1)
     for section in range(nSection):
         print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh -vSECTION=%03d" % (jobName, section, queue, section)
+elif 'ccp' in hostName:
+    if queue == None: queue = 'long'
+    for section in range(nSection):
+        print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh -vSECTION=%03d" % (jobName, section, queue, section)
 else:
     print 'Automatic job submission not available on this site.'
     doSubmit = False
