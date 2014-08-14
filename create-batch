@@ -153,7 +153,7 @@ print>>fout, """#!/bin/bash
 if [ _$PBS_ARRAYID != '_' ]; then
     ## FIXME: printf can introduce bug... please check
     SECTION=`printf %%03d $PBS_ARRAYID`
-else
+elif [ _$SECTION == '_' ]; then
     SECTION=$1
 fi
 cd %s
