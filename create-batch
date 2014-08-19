@@ -154,11 +154,13 @@ if [ _$PBS_ARRAYID != '_' ]; then
     ## FIXME: printf can introduce bug... please check
     SECTION=`printf %%03d $PBS_ARRAYID`
 elif [ _$SECTION == '_' ]; then
-    SECTION=$1
+    SECTION=`printf %%03d $1`
 fi
+export CMS_PATH=%s
+source $CMS_PATH/cmsset_default.sh
 cd %s
 eval `scram runtime -sh`
-cd %s""" % (os.environ["CMSSW_BASE"], jobDir)
+cd %s""" % (os.environ["CMS_PATH"], os.environ["CMSSW_BASE"], jobDir)
 if doGrid:
     print>>fout, "cp -f x509up_u%d /tmp/" % uid
 print>>fout, """echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
@@ -170,7 +172,7 @@ else
     echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
 fi""" % (jobDir, scratchDir, jobDir, jobDir)
 fout = None
-os.chmod(runFileName, os.stat(runFileName).st_mode | stat.S_IEXEC)
+os.chmod(runFileName, 0755)
 
 print "@@ Writing submit script..."
 submitFileName = "%s/submit.sh" % jobDir
@@ -178,17 +180,31 @@ fout = open(submitFileName, "w")
 ## Get hostName for site-dependent part of job submission
 hostName = os.environ['HOSTNAME']
 print>>fout, "#!/bin/bash"
-if 'lxplus' in hostName:
+if 'lxplus' in hostName: # CERN lxplus
     if queue == None: queue = '8nh'
     for section in range(nSection):
         print>>fout, "bsub -J %s.%d -q %s run.sh %03d" % (jobName, section, queue, section)
-elif 'uos.ac.kr' in hostName:
+elif 'uos.ac.kr' in hostName: # UOS SSCC
     if queue == None: queue = 'batch'
     # Turn off PBS_ARRAY due to openpbs bug
     # print>>fout, "qsub -N %s -d `pwd` -q %s -t 0-%d run.sh" % (jobName, queue, nSection-1)
     for section in range(nSection):
         print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh -vSECTION=%03d" % (jobName, section, queue, section)
-elif 'ccp' in hostName:
+elif 'sdfarm.kr' in hostName: # KISTI T3
+    # Condor jobs
+    jdlOut = open("%s/submit.jds" % jobDir, "w")
+    print>>jdlOut, """# Job description file for condor job %s
+executable = run.sh
+universe   = vanilla
+arguments  = $(Process)
+#when_to_transfer_output = ON_EXIT
+run_as_owner = True
+queue %d
+""" % (jobName, nSection)
+    print>>fout, "condor_submit submit.jds"
+    # Condor job runs with 'nobody', so the output directory have to be set o+w
+    os.chmod(jobDir, 757)
+elif 'ccp' in hostName: # KNU CCP SF
     if queue == None: queue = 'long'
     for section in range(nSection):
         print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh -vSECTION=%03d" % (jobName, section, queue, section)
@@ -196,7 +212,7 @@ else:
     print 'Automatic job submission not available on this site.'
     doSubmit = False
 fout = None
-os.chmod(submitFileName, os.stat(submitFileName).st_mode | stat.S_IEXEC)
+os.chmod(submitFileName, os.stat(submitFileName).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 if doSubmit:
     print "@@ Submitting jobs..."
     if 'uos.ac.kr' in hostName:
