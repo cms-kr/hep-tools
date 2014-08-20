@@ -1,0 +1,5 @@
+#!/bin/bash
+
+if [ $HOSTNAME == ui10.sdfarm.kr ]; then
+    xrd cms-xrdr.sdfarm.kr ls /cms/data/xrd/$1
+fi
