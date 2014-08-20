@@ -15,7 +15,7 @@ def usage():
     print "  Optional :"
     print "   --queue QUEUE_NAME               Set the batch queue name"
     print "   -n                               Do not submit jobs to batch"
-    print "   --scratchDir SCRATCH_DIR         SCRATCH DIRECTORY"
+    print "   --transferDest OUTPUT_LOCATION   OUTPUT DIRECTORY (/store will be assumed to SE)"
     print "   -g                               Grid certificate is required"
     sys.exit()
 
@@ -69,12 +69,13 @@ if os.path.isdir(jobDir):
     sys.exit()
 doSubmit = ('-n' not in opts)
 doGrid = ('-g' in opts)
-if '--scratchDir' in opts:
-    scratchDir = opts['--scratchDir']
+if '--transferDest' in opts:
+    transferDest = opts['--transferDest']
 else:
-    #scratchDir = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
-    scratchDir = jobDir
-scratchDir = os.path.abspath(scratchDir)
+    #transferDest = "/pnfs/user/%s/scratch/%s" % (os.environ["USER"], jobName)
+    transferDest = jobDir
+if '://' not in transferDest:
+    transferDest = os.path.abspath(transferDest)
 if '--queue' in opts:
     queue = opts['--queue']
 else:
@@ -85,12 +86,45 @@ if 'CMSSW_VERSION' not in os.environ:
     print "ERROR: You have to set up CMSSW. Run cmsenv in your working directory."
     sys.exit()
 
+# Check which job submitter to be used, check site dependency
+command = None
+doInPlaceRun = True
+doFileTransfer = False
+transferCmd = 'cp $i %s/' % transferDest
+## Get hostName for site-dependent part of job submission
+hostName = os.environ['HOSTNAME']
+if 'lxplus' in hostName: # CERN lxplus
+    if queue == None: queue = '8nh'
+    command = 'bsub -q %s' % (queue)
+    if '/store/' == transferDest[:8]:
+        transferCmd = 'eos cp $i %s/' % transferDest
+        doFileTransfer = True
+elif 'uos.ac.kr' in hostName: # UOS SSCC
+    if queue == None: queue = 'batch'
+    command = 'qsub -N -q %s' % (queue) 
+elif 'ccp' in hostName: # KNU CCP AF
+    if queue == None: queue = 'long'
+    command = 'qsub -N -q %s' % (queue) 
+elif 'sdfarm.kr' in hostName: # KISTI T3
+    command = 'condor_submit submit.jds'
+    doInPlaceRun = False
+    if '/store/' == transferDest[:8]:
+        transferDest = 'root://cms-xrdr.sdfarm.kr:1094///cms/data/xrd/%s' % transferDest
+
+    if 'root://' in transferDest:
+        transferCmd = 'xrdcp file://$i %s/$i' % transferDest
+    else:
+        transferCmd = 'cp $i %s/' % transferDest
+else:
+    print 'Automatic job submission not available on this site.'
+    doSubmit = False
+
 ## Prepare working directory
 print "@@ Preparing batch jobs in", jobName, "..."
 os.makedirs(jobDir)
-if scratchDir != jobDir:
-    print "@@ Preparing output scratch directory in", scratchDir, "..."
-    os.makedirs(scratchDir)
+if transferDest != jobDir and transferCmd == 'cp':
+    print "@@ Preparing output scratch directory in", transferDest, "..."
+    os.makedirs(transferDest)
 
 ## Collect root files
 files = []
@@ -134,7 +168,6 @@ for section in range(nSection):
 
     process.source.fileNames = files[begin:end]
     for modName in outFileModes:
-        #getattr(process, modName).fileName = "%s/%s_%03d.root" % (scratchDir, outFileModes[modName][:-5], section)
         getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
 
     cfgFileName = "%s/job_%03d_cfg.py" % (jobDir, section)
@@ -162,20 +195,33 @@ fi
 export CMS_PATH=%s
 source $CMS_PATH/cmsset_default.sh
 cd %s
-eval `scram runtime -sh`
-cd -
-cp %s/job_${SECTION}_cfg.py ./""" % (os.environ["CMS_PATH"], os.environ["CMSSW_BASE"], jobDir)
+eval `scram runtime -sh`""" % (os.environ["CMS_PATH"], os.environ["CMSSW_BASE"])
 if doGrid:
     print>>fout, "cp -f x509up_u%d /tmp/" % uid
-print>>fout, """echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
-time cmsRun job_${SECTION}_cfg.py #&> %s/job_${SECTION}.log
-EXITCODE=$?
+print>>fout, "echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log" % jobDir
+if doInPlaceRun:
+    print>>fout, """
+time cmsRun job_${SECTION}_cfg.py &> job_${SECTION}.log
+"""
+else:
+    print>>fout, """cd -
+cp %s/job_${SECTION}_cfg.py ./
+time cmsRun job_${SECTION}_cfg.py
+""" % jobDir
+print>>fout, "EXITCODE=$?"
+if doFileTransfer:
+    print>>fout, """
+for i in *.root *.aida *.yoda; do
+    %s
+done
+""" % (transferCmd)
+print>>fout, """
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
 else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
-fi""" % (jobDir, scratchDir, jobDir, jobDir)
+fi""" % (jobDir, jobDir)
 fout = None
 os.chmod(runFileName, 0755)
 
@@ -187,43 +233,32 @@ os.chmod("%s/submit.log" % jobDir, 0666)
 print "@@ Writing submit script..."
 submitFileName = "%s/submit.sh" % jobDir
 fout = open(submitFileName, "w")
-## Get hostName for site-dependent part of job submission
-hostName = os.environ['HOSTNAME']
 print>>fout, "#!/bin/bash"
-if 'lxplus' in hostName: # CERN lxplus
-    if queue == None: queue = '8nh'
+if 'bsub' == command.split()[0]:
     for section in range(nSection):
-        print>>fout, "bsub -J %s.%d -q %s -oo %s/job_%03d.log run.sh %03d" % (jobName, section, queue, jobDir, section, section)
-elif 'uos.ac.kr' in hostName: # UOS SSCC
-    if queue == None: queue = 'batch'
-    # Turn off PBS_ARRAY due to openpbs bug
-    # print>>fout, "qsub -N %s -d `pwd` -q %s -t 0-%d run.sh" % (jobName, queue, nSection-1)
+        print>>fout, "%s -J %s.%d -oo %s/job_%03d.log run.sh %03d" % (command, jobName, section, jobDir, section, section)
+elif 'qsub' == command.split()[0]:
     for section in range(nSection):
-        print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh -vSECTION=%03d" % (jobName, section, queue, section)
-elif 'sdfarm.kr' in hostName: # KISTI T3
+        print>>fout, "%s %s_%d -d `pwd` run.sh -vSECTION=%03d" % (command, jobName, section, section)
+elif 'condor_submit' == command.split()[0]:
     # Condor jobs
     jdlOut = open("%s/submit.jds" % jobDir, "w")
     print>>jdlOut, """# Job description file for condor job %s
 executable = run.sh
 universe   = vanilla
-getenv     = True
 arguments  = $(Process)
+log = condor.log
+
+getenv     = True
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
-log = condor.log
 output = job_$(Process).log
 error = job_$(Process).err
-queue %d
-""" % (jobName, nSection)
+
+queue %d""" % (jobName, nSection)
     jdlOut = None
-    print>>fout, "condor_submit submit.jds"
-elif 'ccp' in hostName: # KNU CCP AF
-    if queue == None: queue = 'long'
-    for section in range(nSection):
-        print>>fout, "qsub -N %s_%d -d `pwd` -q %s run.sh -vSECTION=%03d" % (jobName, section, queue, section)
-else:
-    print 'Automatic job submission not available on this site.'
-    doSubmit = False
+
+    print>>fout, command
 fout = None
 os.chmod(submitFileName, 0755)
 if doSubmit:
