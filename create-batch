@@ -96,6 +96,7 @@ if scratchDir != jobDir:
 files = []
 for f in open(fileList).readlines():
     f = f.strip()
+    f = f.strip('\',"')
     if len(f) < 5: continue
     if '#' == f[0] or '.root' != f[-5:]: continue
     files.append(f)
@@ -120,6 +121,7 @@ print "@@ Setting output modules..."
 outFileModes = {}
 if hasattr(process, 'TFileService'):
     outFileModes['TFileService'] = process.TFileService.fileName.value()
+
 for modName in process.outputModules_():
     outFileModes[modName] = getattr(process, modName).fileName.value()
 
@@ -167,6 +169,7 @@ EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
 else
+    rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log
 fi""" % (jobDir, scratchDir, jobDir, jobDir)
 fout = None
