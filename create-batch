@@ -215,6 +215,7 @@ output = job_$(Process).log
 error = job_$(Process).err
 queue %d
 """ % (jobName, nSection)
+    jdlOut = None
     print>>fout, "condor_submit submit.jds"
 elif 'ccp' in hostName: # KNU CCP AF
     if queue == None: queue = 'long'
