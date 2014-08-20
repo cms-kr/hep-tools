@@ -1,11 +1,15 @@
 #!/bin/bash
 
-if [ `hostname -d` == sdfarm.kr ]; then
+DOMAINNAME=`hostname -d`
+if [ $DOMAINNAME == sdfarm.kr ]; then
     XRDHOST=cms-xrdr.sdfarm.kr
     XRDBASE=/cms/data/xrd
-elif [ `hostname -d` == sscc.uos.ac.kr ]; then
+elif [ $DOMAINNAME == sscc.uos.ac.kr ]; then
     XRDHOST=uosaf0007.sscc.uos.ac.kr
     XRDBASE=/cms
+elif [ $DOMAINNAME == cern.ch ]; then
+    XRDHOST=eoscms
+    XRDBASE=""
 fi
 
 xrd $XRDHOST ls $XRDBASE/$1
