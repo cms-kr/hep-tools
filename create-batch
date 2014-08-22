@@ -201,8 +201,9 @@ if doGrid:
 print>>fout, "echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log" % jobDir
 if doInPlaceRun:
     print>>fout, """
+cd %s
 time cmsRun job_${SECTION}_cfg.py &> job_${SECTION}.log
-"""
+""" % jobDir
 else:
     print>>fout, """cd -
 cp %s/job_${SECTION}_cfg.py ./
