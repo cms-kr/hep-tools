@@ -96,9 +96,12 @@ hostName = os.environ['HOSTNAME']
 if 'lxplus' in hostName: # CERN lxplus
     if queue == None: queue = '8nh'
     command = 'bsub -q %s' % (queue)
+    doInPlaceRun = False
     if '/store/' == transferDest[:8]:
         transferCmd = 'eos cp $i %s/' % transferDest
-        doFileTransfer = True
+    else:
+        transferCmd = 'cp $i %s/' % transferDest
+    doFileTransfer = True
 elif 'uos.ac.kr' in hostName: # UOS SSCC
     if queue == None: queue = 'batch'
     command = 'qsub -N -q %s' % (queue) 
