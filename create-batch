@@ -104,10 +104,10 @@ if 'lxplus' in hostName: # CERN lxplus
     doFileTransfer = True
 elif 'uos.ac.kr' in hostName: # UOS SSCC
     if queue == None: queue = 'batch'
-    command = 'qsub -N -q %s' % (queue) 
+    command = 'qsub -q %s -N' % (queue) 
 elif 'ccp' in hostName: # KNU CCP AF
     if queue == None: queue = 'long'
-    command = 'qsub -N -q %s' % (queue) 
+    command = 'qsub -q %s -N' % (queue) 
 elif 'sdfarm.kr' in hostName: # KISTI T3
     command = 'condor_submit submit.jds'
     doInPlaceRun = False
