@@ -102,7 +102,7 @@ if 'lxplus' in hostName: # CERN lxplus
     else:
         transferCmd = 'cp $i %s/' % transferDest
     doFileTransfer = True
-elif 'uos.ac.kr' in hostName: # UOS SSCC
+elif 'sscc.uos' in hostName: # UOS SSCC
     if queue == None: queue = 'batch'
     command = 'qsub -q %s -N' % (queue) 
 elif 'ccp' in hostName: # KNU CCP AF
