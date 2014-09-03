@@ -118,6 +118,10 @@ elif 'sdfarm.kr' in hostName: # KISTI T3
         transferCmd = 'xrdcp file://$i %s/$i' % transferDest
     else:
         transferCmd = 'cp $i %s/' % transferDest
+    print "KISTI submission is not supported due to user policy change."
+    print "Use local crab to submit your job."
+    print 'Automatic job submission not available on this site.'
+    doSubmit = False
 else:
     print 'Automatic job submission not available on this site.'
     doSubmit = False
