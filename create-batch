@@ -204,7 +204,7 @@ source $CMS_PATH/cmsset_default.sh
 cd %s
 eval `scram runtime -sh`""" % (os.environ["CMS_PATH"], os.environ["CMSSW_BASE"])
 if doGrid:
-    print>>fout, "cp -f x509up_u%d /tmp/" % uid
+    print>>fout, "cp -f %s/x509up_u%d /tmp/" % (jobDir,uid)
 print>>fout, "echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> %s/submit.log" % jobDir
 if doInPlaceRun:
     print>>fout, """
