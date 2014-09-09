@@ -246,7 +246,7 @@ if 'bsub' == command.split()[0]:
         print>>fout, "%s -J %s.%d -oo %s/job_%03d.log run.sh %d" % (command, jobName, section, jobDir, section, section)
 elif 'qsub' == command.split()[0]:
     for section in range(nSection):
-        print>>fout, "%s %s_%d -d `pwd` run.sh -vSECTION=%d" % (command, jobName, section, section)
+        print>>fout, "%s %s_%d -d `pwd` run.sh -vSECTION=%03d" % (command, jobName, section, section)
 elif 'condor_submit' == command.split()[0]:
     # Condor jobs
     jdlOut = open("%s/submit.jds" % jobDir, "w")
