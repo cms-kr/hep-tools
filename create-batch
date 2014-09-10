@@ -2,6 +2,7 @@
 
 import sys, os
 import stat, shutil
+from getopt import gnu_getopt as getopt
 from math import ceil
 from datetime import datetime
 
@@ -21,36 +22,18 @@ def usage():
 
 # Parse arguments
 if len(sys.argv) < 2: usage()
-opts = {}
-args = []
-i = 0
-while i < len(sys.argv)-1:
-    i += 1
-    arg = sys.argv[i]
-
-    arg1, arg2 = None, None
-    if len(arg) > 2 and arg[:2] == '--':
-        if '=' in arg:
-            arg1 = arg.split('=')[0]
-            arg2 = '='.join(arg.split('=')[1:])
-        elif i+1 < len(sys.argv):
-            arg1 = arg
-            arg2 = sys.argv[i+1]
-            i += 1
-        else:
-            print "ERROR: Value must be followed after the option", arg
-            sys.exit()
-        opts[arg1] = arg2
-    elif arg[0] == '-':
-        opts[arg] = True
-    else:
-        args.append(arg)
+try:
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg='])
+    opts = dict(opts)
+except:
+    usage()
 
 ## Mandatory options
 if '--jobName' not in opts: usage()
 #uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
 jobName = opts['--jobName']#+"-"+uniqueID
 jobDir = os.path.abspath(jobName)
+
 if '--fileList' not in opts: usage()
 fileList = opts['--fileList']
 if not os.path.exists(fileList):
