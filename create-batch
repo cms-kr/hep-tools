@@ -29,27 +29,28 @@ except:
     usage()
 
 ## Mandatory options
-if '--jobName' not in opts: usage()
-#uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
-jobName = opts['--jobName']#+"-"+uniqueID
-jobDir = os.path.abspath(jobName)
+try:
+    #uniqueID = datetime.strftime(datetime.now(), "%Y%m%d-%H%M%S")
+    jobName = opts['--jobName']#+"-"+uniqueID
+    jobDir = os.path.abspath(jobName)
 
-if '--fileList' not in opts: usage()
-fileList = opts['--fileList']
-if not os.path.exists(fileList):
-    print "ERROR: Cannot find file list", fileList
-    sys.exit()
-if '--maxFiles' not in opts: usage()
-maxFiles = int(opts['--maxFiles'])
-if '--cfg' not in opts: usage()
-cfgFileName = opts['--cfg']
-if '_cfg.py' != cfgFileName[-min(7,len(cfgFileName)):]: usage()
-if not os.path.exists(cfgFileName):
-    print "ERROR: Cannot find config file", cfgFileName
-    sys.exit()
-if os.path.isdir(jobDir):
-    print "ERROR: Output directory already exists."
-    sys.exit()
+    fileList = opts['--fileList']
+    if not os.path.exists(fileList):
+        print "ERROR: Cannot find file list", fileList
+        sys.exit()
+
+    maxFiles = int(opts['--maxFiles'])
+
+    cfgFileName = opts['--cfg']
+    if not cfgFileName.endswith('.py'): usage()
+    if not os.path.exists(cfgFileName):
+        print "ERROR: Cannot find config file", cfgFileName
+        sys.exit()
+    if os.path.isdir(jobDir):
+        print "ERROR: Output directory already exists."
+        sys.exit()
+except:
+    usage()
 doSubmit = ('-n' not in opts)
 doGrid = ('-g' in opts)
 if '--transferDest' in opts:
@@ -69,45 +70,49 @@ if 'CMSSW_VERSION' not in os.environ:
     print "ERROR: You have to set up CMSSW. Run cmsenv in your working directory."
     sys.exit()
 
-# Check which job submitter to be used, check site dependency
-command = None
-doInPlaceRun = True
-doFileTransfer = False
-transferCmd = 'cp $i %s/' % transferDest
-## Get hostName for site-dependent part of job submission
-hostName = os.environ['HOSTNAME']
-if 'lxplus' in hostName: # CERN lxplus
-    if queue == None: queue = '8nh'
-    command = 'bsub -q %s' % (queue)
-    doInPlaceRun = False
-    if '/store/' == transferDest[:8]:
-        transferCmd = 'eos cp $i %s/' % transferDest
-    else:
-        transferCmd = 'cp $i %s/' % transferDest
-    doFileTransfer = True
-elif 'sscc.uos' in hostName: # UOS SSCC
-    if queue == None: queue = 'batch'
-    command = 'qsub -q %s -N' % (queue) 
-elif 'ccp' in hostName: # KNU CCP AF
-    if queue == None: queue = 'long'
-    command = 'qsub -q %s -N' % (queue) 
-elif 'sdfarm.kr' in hostName: # KISTI T3
-    command = 'condor_submit submit.jds'
-    doInPlaceRun = False
-    if '/store/' == transferDest[:8]:
-        transferDest = 'root://cms-xrdr.sdfarm.kr:1094///cms/data/xrd/%s' % transferDest
+def loadConfig(queue, transferDest):
+    # Check which job submitter to be used, check site dependency
+    command = None
+    doInPlaceRun = True
+    doFileTransfer = False
+    transferCmd = 'cp $i %s/' % transferDest
 
-    if 'root://' in transferDest:
-        transferCmd = 'xrdcp file://$i %s/$i' % transferDest
+    ## Get hostName for site-dependent part of job submission
+    hostName = os.environ['HOSTNAME']
+    if 'lxplus' in hostName: # CERN lxplus
+        if queue == None: queue = '8nh'
+        command = 'bsub -q %s' % (queue)
+        doInPlaceRun = False
+        if transferDest.startswith('/store/'):
+            transferCmd = 'eos cp $i %s/' % transferDest
+        else:
+            transferCmd = 'cp $i %s/' % transferDest
+        doFileTransfer = True
+    elif 'sscc.uos' in hostName: # UOS SSCC
+        if queue == None: queue = 'batch'
+        command = 'qsub -q %s -N' % (queue) 
+    elif 'ccp' in hostName: # KNU CCP AF
+        if queue == None: queue = 'long'
+        command = 'qsub -q %s -N' % (queue) 
+    elif 'sdfarm.kr' in hostName: # KISTI T3
+        command = 'condor_submit submit.jds'
+        doInPlaceRun = False
+        if transferDest.startswith('/store/'):
+            transferDest = 'root://cms-xrdr.sdfarm.kr:1094///cms/data/xrd/%s' % transferDest
+
+        if transferDest.startswith('root://'):
+            transferCmd = 'xrdcp file://$i %s/$i' % transferDest
+        else:
+            transferCmd = 'cp $i %s/' % transferDest
+        print "KISTI submission is not supported due to user policy change."
+        print "Use local crab to submit your job."
+        print 'Automatic job submission not available on this site.'
+        doSubmit = False
     else:
-        transferCmd = 'cp $i %s/' % transferDest
-    print "KISTI submission is not supported due to user policy change."
-    print "Use local crab to submit your job."
-    print 'Automatic job submission not available on this site.'
-    doSubmit = False
-else:
-    print 'Automatic job submission not available on this site.'
-    doSubmit = False
+        print 'Automatic job submission not available on this site.'
+        doSubmit = False
+
+    return (command, doInPlaceRun, doFileTransfer, transferCmd)
 
 ## Prepare working directory
 print "@@ Preparing batch jobs in", jobName, "..."
@@ -115,6 +120,8 @@ os.makedirs(jobDir)
 if transferDest != jobDir and transferCmd == 'cp':
     print "@@ Preparing output scratch directory in", transferDest, "..."
     os.makedirs(transferDest)
+
+command, doInPlaceRun, doFileTransfer, transferCmd = loadConfig(queue, transferDest)
 
 ## Collect root files
 files = []
