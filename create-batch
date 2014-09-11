@@ -70,7 +70,17 @@ if 'CMSSW_VERSION' not in os.environ:
     print "ERROR: You have to set up CMSSW. Run cmsenv in your working directory."
     sys.exit()
 
-def loadConfig(queue, transferDest):
+def archive(jobDir):
+    ## Archive libraries and other stuffs
+    cmsswDir = os.environ["CMSSW_BASE"]
+    cmsswBase = os.path.basename(cmsswDir)
+    archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(jobDir, cmsswDir, cmsswBase)
+    archiveCmd += " --exclude tmp --exclude '*.root' --exclude '*gz' --exclude .git"
+    archiveCmd += " --exclude %s" % jobDir
+    print "@@ Archive files for job submission..." 
+    os.system(archiveCmd)
+
+def customiseSite(queue, transferDest):
     # Check which job submitter to be used, check site dependency
     command = None
     doInPlaceRun = True
@@ -121,7 +131,7 @@ if transferDest != jobDir and transferCmd == 'cp':
     print "@@ Preparing output scratch directory in", transferDest, "..."
     os.makedirs(transferDest)
 
-command, doInPlaceRun, doFileTransfer, transferCmd = loadConfig(queue, transferDest)
+command, doInPlaceRun, doFileTransfer, transferCmd = customiseSite(queue, transferDest)
 
 ## Collect root files
 files = []
