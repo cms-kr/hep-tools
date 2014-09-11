@@ -220,7 +220,7 @@ if [ _$CMS_PATH == _ ]; then
 fi
 
 tar xzf {0}/job.tgz
-cd {1}/{2}
+cd {3}/{2}
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -287,7 +287,7 @@ mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 
 tar xzf {0}/job.tgz
-cd {1}/{2}
+cd {3}/{2}
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -347,7 +347,7 @@ if [ _$CMS_PATH == _ ]; then
 fi
 
 tar xzf job.tgz
-cd {1}/{2}
+cd {3}/{2}
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -366,9 +366,6 @@ done""" % (self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` # >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
-
-        print>>fout, """#!/bin/bash
-eval `scram runtime -sh`""" % (os.environ["CMS_PATH"], os.environ["CMSSW_BASE"])
 
         ## Write submit script
         fout = open("%s/submit.log" % self.jobDir, "w")
@@ -399,7 +396,7 @@ output = job_$(Process).log
 error = job_$(Process).err
 transfer_input_files = job.tgz
 
-queue %d""" % (jobName, self.nSection)
+queue %d""" % (self.jobName, self.nSection)
         jdlOut = None
 
     def archive(self):
@@ -408,7 +405,7 @@ queue %d""" % (jobName, self.nSection)
         cmsswBase = os.path.basename(cmsswDir)
         archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(self.jobDir, cmsswDir, cmsswBase)
         archiveCmd += " --exclude tmp --exclude '*.root' --exclude '*gz' --exclude .git"
-        archiveCmd += " --exclude %s" % self.jobDir
+        #archiveCmd += " --exclude %s" % self.jobDir
         print "@@ Archive files for job submission..." 
         os.system(archiveCmd)
 
