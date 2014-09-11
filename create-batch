@@ -220,7 +220,7 @@ if [ _$CMS_PATH == _ ]; then
 fi
 
 tar xzf {0}/job.tgz
-cd {3}/{2}
+cd {1}/{2}
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -231,7 +231,8 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, cmsswBase, self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
+fi""".format(self.jobDir, os.path.basename(cmsswBase), 
+             self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
         print>>fout, """
 for FILE in *_${SECTION}.*; do
     %s$FILE %s
@@ -287,7 +288,7 @@ mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 
 tar xzf {0}/job.tgz
-cd {3}/{2}
+cd {1}/{2}
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -298,7 +299,8 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, cmsswBase, self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
+fi""".format(self.jobDir, os.path.basename(cmsswBase), 
+             self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
         print>>fout, """
 for FILE in *_${SECTION}.*; do
     %s$FILE %s
@@ -347,7 +349,7 @@ if [ _$CMS_PATH == _ ]; then
 fi
 
 tar xzf job.tgz
-cd {3}/{2}
+cd {1}/{2}
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -358,7 +360,8 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, cmsswBase, self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
+fi""".format(self.jobDir, os.path.basename(cmsswBase), 
+             self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
         print>>fout, """
 for FILE in *_${SECTION}.*; do
     %s$FILE %s
