@@ -242,7 +242,7 @@ done""" % (self.transferCmd, self.dest)
 
         if jobConfig.doGrid:
             uid = os.getuid()
-            print>>fout, "cp -f %s/x509up_u%d /tmp/" % (jobConfig.jobDir,uid)
+            print>>fout, "cp -f x509up_u%d /tmp/" % (uid)
 
         ## Write submit script
         fout = open("%s/submit.log" % self.jobDir, "w")
@@ -283,8 +283,8 @@ if [ _$CMS_PATH == _ ]; then
 fi
 
 ## Prepare workdirectory
-mkdir -p /tmp/${USER}/PBS_${PBS_JOBID}
-cd /tmp/${USER}/PBS_${PBS_JOBID}
+mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
+cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 
 tar xzf {0}/job.tgz
 cd {1}/{2}
@@ -307,8 +307,6 @@ done""" % (self.transferCmd, self.dest)
         fout = None
         os.chmod(runFileName, 0755)
 
-        print>>fout, """#!/bin/bash
-eval `scram runtime -sh`""" % (os.environ["CMS_PATH"], os.environ["CMSSW_BASE"])
         if self.doGrid:
             uid = os.getuid()
             print>>fout, "cp -f %s/x509up_u%d /tmp/" % (self.jobDir,uid)
@@ -324,7 +322,7 @@ eval `scram runtime -sh`""" % (os.environ["CMS_PATH"], os.environ["CMSSW_BASE"])
         fout = open(submitFileName, "w")
         print>>fout, "#!/bin/bash"
         for section in range(self.nSection):
-            print>>fout, "{0} {1}_{2} run.sh -vSECTION={2}" % (seld.submitCmd, self.jobName, section)
+            print>>fout, "{0} {1}_{2} run.sh -vSECTION={2}".format(self.submitCmd, self.jobName, section)
         fout = None
         os.chmod(submitFileName, 0755)
 
@@ -425,7 +423,7 @@ queue %d""" % (jobName, self.nSection)
                 os.system("cd %s;./submit.sh" % self.jobDir)
         else:
             print "@@ Jobs are prepared. You can submit jobs with following command:"
-            print "cd %s;./submit.sh" % (jobDir)
+            print "cd %s;./submit.sh" % (self.jobDir)
 
 ## Create job configure
 jobConfig = TheJobConfig(opts)
