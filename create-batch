@@ -258,6 +258,7 @@ queue %d""" % (jobName, nSection)
     print>>fout, command
 fout = None
 os.chmod(submitFileName, 0755)
+hostName = os.environ['HOSTNAME']
 if doSubmit:
     print "@@ Submitting jobs..."
     if 'uos.ac.kr' in hostName:
