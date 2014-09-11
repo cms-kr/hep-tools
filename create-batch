@@ -402,6 +402,7 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 output = job_$(Process).log
 error = job_$(Process).err
+transfer_input_files = job.tgz
 
 queue %d""" % (jobName, self.nSection)
         jdlOut = None
