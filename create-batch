@@ -407,7 +407,7 @@ queue %d""" % (self.jobName, self.nSection)
         cmsswDir = os.environ["CMSSW_BASE"]
         cmsswBase = os.path.basename(cmsswDir)
         archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(self.jobDir, cmsswDir, cmsswBase)
-        archiveCmd += " --exclude tmp --exclude '*.root' --exclude '*gz' --exclude .git"
+        archiveCmd += " --exclude tmp --exclude '*.root' --exclude 'job.tgz' --exclude .git"
         #archiveCmd += " --exclude %s" % self.jobDir
         print "@@ Archive files for job submission..." 
         os.system(archiveCmd)
