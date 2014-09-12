@@ -23,12 +23,13 @@ def usage():
     print "   -n                               Do not submit jobs to batch"
     print "   --transferDest OUTPUT_LOCATION   OUTPUT DIRECTORY (/store will be assumed to SE)"
     print "   -g                               Grid certificate is required"
+    print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
     sys.exit()
 
 # Parse arguments
 if len(sys.argv) < 2: usage()
 try:
-    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg='])
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent='])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -41,6 +42,7 @@ class TheJobConfig():
         self.scheduler = ""
         self.doGrid = False
         self.doSubmit = True
+        self.maxEvent = -1
         hostName = os.environ['HOSTNAME']
         if hostName.startswith("lxplus"):
             self.site = "CERN"
@@ -68,6 +70,8 @@ class TheJobConfig():
         try:
             self.jobName = opts['--jobName']
             self.jobDir = os.path.abspath(self.jobName)
+            self.cmsswBase = os.environ["CMSSW_BASE"]
+            self.jobBase =  self.jobDir.replace(os.path.dirname(self.cmsswBase), '').strip('/')
             self.maxFiles = int(opts['--maxFiles'])
 
             fileList = opts['--fileList']
@@ -94,6 +98,7 @@ class TheJobConfig():
         if '-n' in opts: self.doSubmit = False
         if '-g' in opts: self.doGrid   = True
         if '--queue' in opts: queue = opts['--queue']
+        if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
 
         ## Determine submit command
         if self.scheduler == "LSB":
@@ -159,17 +164,21 @@ class TheJobConfig():
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
-        process.maxEvents.input = -1
+        process.maxEvents.input = self.maxEvent
         sys.stdout = cout
 
         ## Memorise to modify output file names
         print "@@ Setting output modules..."
+        self.outFileNames = []
         outFileModes = {}
         if hasattr(process, 'TFileService'):
             outFileModes['TFileService'] = process.TFileService.fileName.value()
 
         for modName in process.outputModules_():
             outFileModes[modName] = getattr(process, modName).fileName.value()
+
+        for f in outFileModes.values():
+            self.outFileNames.append(f)
 
         ## Split files into jobs and write python cfg
         print "@@ Splitting jobs..."
@@ -180,8 +189,8 @@ class TheJobConfig():
             end = min(begin+self.maxFiles, nFiles)
 
             process.source.fileNames = self.files[begin:end]
-            for modName in outFileModes:
-                getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
+            #for modName in outFileModes:
+            #    getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
 
             cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
             open(cfgFileName, "w").write(process.dumpPython())
@@ -200,7 +209,6 @@ class TheJobConfig():
         elif self.scheduler == "CONDOR": self.makeCondorJob()
 
     def makeLSBJob(self):
-        cmsswBase = os.environ["CMSSW_BASE"]
 
         ## Write run script
         print "@@ Writing run script..."
@@ -215,12 +223,13 @@ fi
 SECTION=`printf %03d $1`
 
 if [ _$CMS_PATH == _ ]; then
-  export CMS_PATH={3}
+  export CMS_PATH={2}
   source $CMS_PATH/cmsset_default.sh
 fi
 
 tar xzf {0}/job.tgz
-cd {1}/{2}
+cd {1}
+scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -231,12 +240,11 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, os.path.basename(cmsswBase), 
-             self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
         print>>fout, """
-for FILE in *_${SECTION}.*; do
+for FILE in %s; do
     %s$FILE %s
-done""" % (self.transferCmd, self.dest)
+done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
@@ -261,8 +269,6 @@ done""" % (self.transferCmd, self.dest)
         os.chmod(submitFileName, 0755)
 
     def makePBSJob(self):
-        cmsswBase = os.environ["CMSSW_BASE"]
-
         ## Write run script
         print "@@ Writing run script..."
         runFileName = "%s/run.sh" % self.jobDir
@@ -279,7 +285,7 @@ else
 fi
 
 if [ _$CMS_PATH == _ ]; then
-  export CMS_PATH={3}
+  export CMS_PATH={2}
   source $CMS_PATH/cmsset_default.sh
 fi
 
@@ -288,7 +294,8 @@ mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 
 tar xzf {0}/job.tgz
-cd {1}/{2}
+cd {1}
+scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -299,12 +306,11 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, os.path.basename(cmsswBase), 
-             self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
         print>>fout, """
-for FILE in *_${SECTION}.*; do
+for FILE in %s; do
     %s$FILE %s
-done""" % (self.transferCmd, self.dest)
+done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
@@ -329,8 +335,6 @@ done""" % (self.transferCmd, self.dest)
         os.chmod(submitFileName, 0755)
 
     def makeCondorJob(self):
-        cmsswBase = os.environ["CMSSW_BASE"]
-
         ## Write run script
         print "@@ Writing run script..."
         runFileName = "%s/run.sh" % self.jobDir
@@ -344,12 +348,13 @@ fi
 SECTION=`printf %03d $1`
 
 if [ _$CMS_PATH == _ ]; then
-  export CMS_PATH={3}
+  export CMS_PATH={2}
   source $CMS_PATH/cmsset_default.sh
 fi
 
 tar xzf job.tgz
-cd {1}/{2}
+cd {1}
+scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py
@@ -360,12 +365,12 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, os.path.basename(cmsswBase), 
-             self.jobDir.replace(cmsswBase, ''), os.environ['CMS_PATH'])
-        print>>fout, """
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+        if self.transferCmd != '':
+            print>>fout, """
 for FILE in *_${SECTION}.*; do
     %s$FILE %s
-done""" % (self.transferCmd, self.dest)
+done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` # >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
@@ -386,8 +391,8 @@ done""" % (self.transferCmd, self.dest)
 
         # Condor jobs
         jdlOut = open("%s/submit.jds" % self.jobDir, "w")
-        print>>jdlOut, """# Job description file for condor job %s
-executable = run.sh
+        print>>jdlOut, "# Job description file for condor job", self.jobName
+        print>>jdlOut, """executable = run.sh
 universe   = vanilla
 arguments  = $(Process)
 log = condor.log
@@ -397,16 +402,17 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 output = job_$(Process).log
 error = job_$(Process).err
-transfer_input_files = job.tgz
-
-queue %d""" % (self.jobName, self.nSection)
+transfer_input_files = job.tgz"""
+        if self.transferCmd == '':
+            print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
+            remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
+            print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
+        print>>jdlOut, "queue",  self.nSection
         jdlOut = None
 
     def archive(self):
         ## Archive libraries and other stuffs
-        cmsswDir = os.environ["CMSSW_BASE"]
-        cmsswBase = os.path.basename(cmsswDir)
-        archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(self.jobDir, cmsswDir, cmsswBase)
+        archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
         archiveCmd += " --exclude tmp --exclude '*.root' --exclude 'job.tgz' --exclude .git"
         #archiveCmd += " --exclude %s" % self.jobDir
         print "@@ Archive files for job submission..." 
