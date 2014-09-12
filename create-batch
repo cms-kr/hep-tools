@@ -244,7 +244,7 @@ fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
-    PREFIX=${FILE%.${EXT}}
+    PREFIX=${FILE%%.${EXT}}
     %s$FILE %s/${PREFIX}_${SECTION}.${EXT}
 done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
@@ -312,7 +312,7 @@ fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
-    PREFIX=${FILE%.${EXT}}
+    PREFIX=${FILE%%.${EXT}}
     %s$FILE %s/${PREFIX}_${SECTION}.${EXT}
 done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
