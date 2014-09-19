@@ -53,10 +53,14 @@ class TheJobConfig():
             self.scheduler = "PBS"
             opts['-g'] = True ## Enforce to carry grid certificate
             queue = "batch"
-        elif hostName.startswith('ccp'):
+        elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
             self.site = "CCP"
             self.scheduler = "PBS"
             queue = "long"
+        elif 'knu.ac.kr' in hostName: ## KNU T2/T3
+            self.site = "KNU"
+            self.scheduler = "PBS"
+            queue = "cms"
         elif hostName.endswith('sdfarm.kr'):
             self.site = "KISTI"
             self.scheduler = "CONDOR"
@@ -361,8 +365,10 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
+ls -al
 time cmsRun job_${{SECTION}}_cfg.py
 EXITCODE=$?
+ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
 else
