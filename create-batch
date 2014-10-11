@@ -379,7 +379,9 @@ fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
         if self.transferCmd != '':
             print>>fout, """
 for FILE in %s; do
-    %s$FILE %s
+    EXT=${FILE##*.}
+    PREFIX=${FILE%%.${EXT}}
+    %s$FILE %s/${PREFIX}_${SECTION}.${EXT}
 done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` # >> %s/submit.log" % self.jobDir
         fout = None
