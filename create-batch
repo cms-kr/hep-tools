@@ -126,7 +126,7 @@ class TheJobConfig():
         elif self.site == "KISTI":
             if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///cms/data/xrd/%s' % self.dest
             if self.dest.startswith('root://'):
-                self.transferCmd = 'xrdcp file://'
+                self.transferCmd = 'xrdcp '
             elif self.dest != os.path.abspath(self.jobDir):
                 print "!!! Simple copy from batch node is forbidden in KISTI!!!"
                 sys.exit()
