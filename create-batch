@@ -44,7 +44,7 @@ class TheJobConfig():
         self.doSubmit = True
         self.maxEvent = -1
         hostName = os.environ['HOSTNAME']
-        if hostName.startswith("lxplus"):
+        if hostName.startswith("lxplus") or hostName.endswith("cern.ch"):
             self.site = "CERN"
             self.scheduler = "LSB"
             queue = "8nh"
@@ -427,6 +427,8 @@ transfer_input_files = job.tgz"""
             print "@@ Submitting jobs..."
             if self.site == "UOS":
                 os.system("ssh uosaf0008 'cd %s;./submit.sh'" % self.jobDir)
+            elif self.site == "CERN" and not os.environ['HOSTNAME'].startswith("lxplus"):
+                os.system("ssh lxplus.cern.ch 'cd %s;./submit.sh'" % self.jobDir)
             else:
                 os.system("cd %s;./submit.sh" % self.jobDir)
         else:
