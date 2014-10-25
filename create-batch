@@ -24,12 +24,13 @@ def usage():
     print "   --transferDest OUTPUT_LOCATION   OUTPUT DIRECTORY (/store will be assumed to SE)"
     print "   -g                               Grid certificate is required"
     print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
+    print "   --transferFiles                  Additional files to transfer"
     sys.exit()
 
 # Parse arguments
 if len(sys.argv) < 2: usage()
 try:
-    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent='])
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent=', 'transferFiles='])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -132,6 +133,11 @@ class TheJobConfig():
             ## Default transfer command by simple copy command
             self.transferCmd = "mv "
 
+        ## Set output files
+        self.outFileNames = []
+        if '--transferFiles' in opts:
+            self.outFileNames = opts['--transferFiles'].split(',')
+
         ## Collect root files
         self.files = []
         for f in open(fileList).readlines():
@@ -169,7 +175,6 @@ class TheJobConfig():
 
         ## Memorise to modify output file names
         print "@@ Setting output modules..."
-        self.outFileNames = []
         outFileModes = {}
         if hasattr(process, 'TFileService'):
             outFileModes['TFileService'] = process.TFileService.fileName.value()
@@ -417,10 +422,13 @@ transfer_input_files = job.tgz"""
     def archive(self):
         ## Archive libraries and other stuffs
         archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-        archiveCmd += " --exclude tmp --exclude '*.root' --exclude 'job.tgz' --exclude .git"
-        #archiveCmd += " --exclude %s" % self.jobDir
+        archiveCmd += " --exclude tmp --exclude '*.root' --exclude 'job.tgz' --exclude .git --exclude-tag-all=.create-batch"
         print "@@ Archive files for job submission..." 
         os.system(archiveCmd)
+        os.system("rm -f %s/job_*_cfg.py" % self.jobDir)
+
+        tmpFile = open("%s/.create-batch" % self.jobDir, "w")
+        tmpFile.close()
 
     def submit(self):
         if self.doSubmit:
