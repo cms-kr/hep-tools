@@ -36,6 +36,7 @@ except:
     print "!!! Error parsing arguments"
     usage()
 
+
 class TheJobConfig():
     def __init__(self, opts):
         ## Initialise configuration, set site-dependent default values
@@ -44,6 +45,7 @@ class TheJobConfig():
         self.doGrid = False
         self.doSubmit = True
         self.maxEvent = -1
+        self.additional_options=""
         hostName = os.environ['HOSTNAME']
         if hostName.startswith("lxplus") or hostName.endswith("cern.ch"):
             self.site = "CERN"
@@ -178,6 +180,16 @@ class TheJobConfig():
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
+        options = __import__('.'.join(self.cfgFileName.split('.')[:-1])).options
+        additional_options =""
+        if options.runOnMC :
+          additional_options += "runOnMC="+str(options.runOnMC)+" "
+        if options.useMiniAOD :
+          additional_options += "useMiniAOD="+str(options.useMiniAOD)+" "
+        if options.globalTag :
+          additional_options += "globalTag="+str(options.globalTag) 
+        print additional_options
+        self.additional_options = additional_options
         process.maxEvents.input = self.maxEvent
         sys.stdout = cout
 
@@ -245,7 +257,7 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
-time cmsRun job_${{SECTION}}_cfg.py
+time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
@@ -253,7 +265,7 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
@@ -313,7 +325,7 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
-time cmsRun job_${{SECTION}}_cfg.py
+time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
@@ -321,7 +333,7 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
@@ -375,7 +387,7 @@ scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
 ls -al
-time cmsRun job_${{SECTION}}_cfg.py
+time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
 ls -al
 if [ $EXITCODE == 0 ]; then
@@ -384,7 +396,7 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         if self.transferCmd != '':
             print>>fout, """
 for FILE in %s; do
