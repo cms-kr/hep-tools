@@ -25,12 +25,13 @@ def usage():
     print "   -g                               Grid certificate is required"
     print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
     print "   --transferFiles                  Additional files to transfer"
+    print "   --args                           general arguments"
     sys.exit()
 
 # Parse arguments
 if len(sys.argv) < 2: usage()
 try:
-    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent=', 'transferFiles='])
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent=', 'transferFiles=','args='])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -106,7 +107,7 @@ class TheJobConfig():
         if '-g' in opts: self.doGrid   = True
         if '--queue' in opts: queue = opts['--queue']
         if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
-
+        if '--args' in opts : self.additional_options = opts['--args']
         ## Determine submit command
         if self.scheduler == "LSB":
             self.submitCmd = 'bsub -q %s' % queue
@@ -181,15 +182,6 @@ class TheJobConfig():
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
         options = __import__('.'.join(self.cfgFileName.split('.')[:-1])).options
-        additional_options =""
-        if options.runOnMC :
-          additional_options += "runOnMC="+str(options.runOnMC)+" "
-        if options.useMiniAOD :
-          additional_options += "useMiniAOD="+str(options.useMiniAOD)+" "
-        if options.globalTag :
-          additional_options += "globalTag="+str(options.globalTag) 
-        print additional_options
-        self.additional_options = additional_options
         process.maxEvents.input = self.maxEvent
         sys.stdout = cout
 
