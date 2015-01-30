@@ -180,6 +180,10 @@ class TheJobConfig():
         sys.path.append('.')
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
+        sys.argv=[]
+        sys.argv.append(".py")
+        sys.argv.extend( self.additional_options.split())
+        print sys.argv
         process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
         process.maxEvents.input = self.maxEvent
         sys.stdout = cout
