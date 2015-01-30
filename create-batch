@@ -183,7 +183,6 @@ class TheJobConfig():
         sys.argv=[]
         sys.argv.append(".py")
         sys.argv.extend( self.additional_options.split())
-        print sys.argv
         process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
         process.maxEvents.input = self.maxEvent
         sys.stdout = cout
