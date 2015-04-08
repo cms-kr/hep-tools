@@ -310,12 +310,17 @@ if [ _$CMS_PATH == _ ]; then
   source $CMS_PATH/cmsset_default.sh
 fi
 
+hostname
 ## Prepare workdirectory
 mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
-
 tar xzf {0}/job.tgz
 cd {1}
+voms-proxy-info -exists --hours $1
+if [[ -f {1}/x509up_u`id -u` && $? -eq 1 ]]
+then 
+  cp -f {1}/x509up_u`id -u` /tmp 
+fi 
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
@@ -337,10 +342,6 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
-
-        if self.doGrid:
-            uid = os.getuid()
-            print>>fout, "cp -f %s/x509up_u%d /tmp/" % (self.jobDir,uid)
 
         ## Write submit script
         fout = open("%s/submit.log" % self.jobDir, "w")
