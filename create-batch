@@ -316,7 +316,11 @@ mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 tar xzf {0}/job.tgz
 cd {1}
-cp -f x509up_u`id -u` /tmp
+voms-proxy-info -exists --hours $1
+if [[ -f {1}/x509up_u`id -u` && $? -eq 1 ]]
+then 
+  cp -f {1}/x509up_u`id -u` /tmp 
+fi 
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
