@@ -217,7 +217,7 @@ class TheJobConfig():
         ## Checking voms proxy
         if self.doGrid:
             print "@@ Checking grid certificate to access files..."
-            if os.system("voms-proxy-info -exists --hours 8") != 0:
+            if os.system("voms-proxy-info -exists --valid 8:00") != 0:
                 os.system("voms-proxy-init -voms cms --valid 144:00")
             uid = os.getuid()
             shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (self.jobDir, uid))
@@ -316,10 +316,20 @@ mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 tar xzf {0}/job.tgz
 cd {1}
-voms-proxy-info -exists --hours $1
-if [[ -f {1}/x509up_u`id -u` && $? -eq 1 ]]
-then 
-  cp -f {1}/x509up_u`id -u` /tmp 
+PROXY_CA=/tmp/${{USER}}/PBS_${{PBS_JOBID}}/{1}/x509up_u`id -u`
+echo ${{PROXY_CA}}
+voms-proxy-info -exists --valid 8:00
+TIMEVALID=$?
+if [ -f ${{PROXY_CA}} ] && [ ${{TIMEVALID}} -eq 1 ]; then
+  echo "copy proxy ca to /tmp" 
+  cp -f ${{PROXY_CA}} /tmp
+else
+  if [ ! -f ${{PROXY_CA}} ]; then
+    echo "Can not find proxy CA"
+  fi
+  if [ ${{TIMEVALID}} -eq 1 ]; then
+    echo "Sufficient valid time"
+  fi
 fi 
 scram build ProjectRename
 eval `scram runtime -sh`
