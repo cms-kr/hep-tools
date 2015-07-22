@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+import os, sys, time,glob,re
+from optparse import OptionParser
+
+class submitCondor :
+  output_path = None
+  input_list = []
+  title = None
+  pyCfg = None 
+  jdl = None
+  def __init__(self) :
+    self.getVariable()
+    self.makeDirectory()
+    self.pwd = os.getcwd()
+ 
+  def makeDirectory(self) :
+    time_dir = time.strftime(self.output_path+"__%d%b%Y_%HH%MM/",time.localtime())
+    os.mkdir(time_dir)
+    os.system("cp %s %s"%(self.pyCfg, time_dir))
+    self.output_path = time_dir
+    os.chdir( time_dir) 
+    self.makeCmdFiles( )
+    for idx, inputfile in enumerate(self.input_list) :
+      subdir = self.jobName+'_'+str(idx)
+      os.mkdir(subdir )
+      self.addCmdFiles( inputfile, self.jobName+"_"+str(idx)+".root")
+    self.writeCmdFiles()
+      
+
+  def getVariable( self ) :
+    usage = "%prog [options] pyROOT_Script.py\negs)submitCondor -i /pnfs/user/cat_data/JpsiFilteredCattuple/ -p \"catTuple*.root\" calAngle.py\nInfo) PyROOT_Script.py's arguments must be <input-file> <output-file>\n"
+    parser = OptionParser(usage)
+    parser.add_option("-i","--inpath",action="store",type="string",dest="inputPath",help="input files(.ROOT)'s directory path.")
+    parser.add_option("-o","--outpath",action="store",type="string",default="ANA_ROOT",dest="outputPath",help="output file path. (Default : ANA_ROOT)")
+    parser.add_option("-p","--pattern",action="store",type="string",default="*.root",dest="pattern",help="Input file's name pattern.(Default : \"*.root\")")  
+    parser.add_option("-a","--argument",action="store",type="string",default=None,dest="argument",help="Argumnt for Input variables")  
+    parser.add_option("-j","--jobName",action="store",type="string",default="ANA",dest="jobName",help="Job Name.(Default : ANA) ")  
+    (options,args) = parser.parse_args()
+    self.output_path = options.outputPath 
+    self.jobName = options.jobName
+    self.input_list = glob.glob( options.inputPath+'/'+ options.pattern)
+    self.pyCfg = args[0]
+    self.argument = options.argument
+
+  def makeCmdFiles(self ) :
+    jdl = """
+executable  = %s
+universe    = vanilla
+input       = 
+getenv     = True
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+log         = condor.log
+"""%(self.pyCfg)
+    self.jdl = jdl
+
+  def addCmdFiles(self, input, output) :
+    flag = False
+    if ( self.argument == None) :
+      self.argument = "%s %s"%(input,output)
+      flag = True
+    self.jdl += """
+InitialDir = %s_$(Process)
+arguments  = %s
+output = job_$(Process).log
+error = job_$(Process).err
+transfer_input_files = %s
+transfer_output_files = %s
+queue 
+""" %(self.jobName, self.argument, input, output)
+    if flag :
+      self.argument = None
+
+  def writeCmdFiles( self) :
+    jdl_file = file( "run.jdl","w")
+    jdl_file.write( self.jdl )
+    jdl_file.close()
+    return 
+
+  def Print(self) :
+    print self.output_path
+    print "# of files : %d"%(len(self.input_list))
+    print self.pyCfg
+
+  def Ana(self) :
+    pass
+  """
+  def Ana(self) :
+    print "Ana"
+    for input in self.input_list :
+      idx = re.search(r'\d+',input)
+      if ( idx.group() is not None) :
+        n_idx = int(idx.group())
+      output = self.output_path+"/"+self.title+"_%03d.root"%(int(n_idx))
+      config = self.makeCmdFiles(n_idx,input,output )
+      tmp_sc = open(self.output_path+"/batch_%d"%n_idx+".cmd","w")
+      tmp_sc.write( config )
+      tmp_sc.write("python %s %s %s"%(self.pyCfg, input, output))
+      tmp_sc.close()
+      command = "qsub -q %s %s/batch_%d.cmd"%(self.queue,self.output_path,n_idx)
+      print command
+      os.system(command)
+  """
+
+
+if __name__ == "__main__" :
+  filename = sys.argv[1]
+  sb = submitCondor()
+  sb.Ana()
+  sb.Print()
+
+
+
+
+
+
