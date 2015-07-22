@@ -54,9 +54,9 @@ class TheJobConfig():
             queue = "8nh"
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
-            self.scheduler = "PBS"
+            self.scheduler = "CONDOR"
             opts['-g'] = True ## Enforce to carry grid certificate
-            queue = "batch"
+            #queue = "batch"
         elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
             self.site = "CCP"
             self.scheduler = "PBS"
@@ -386,8 +386,14 @@ if [ _$CMS_PATH == _ ]; then
   source $CMS_PATH/cmsset_default.sh
 fi
 
+hostname
 tar xzf job.tgz
-cd {1}
+cd {1}""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
+        if (self.doGrid) :
+          print>>fout,"""
+cp x509up_u`id -u` /tmp/x509up_u`id -u`"""
+
+        print>>fout,"""
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
@@ -433,6 +439,8 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>jdlOut, """executable = run.sh
 universe   = vanilla
 arguments  = $(Process)
+requirements = OpSysMajorVer == 6
+
 log = condor.log
 
 getenv     = True
@@ -463,6 +471,9 @@ transfer_input_files = job.tgz"""
         if self.doSubmit:
             print "@@ Submitting jobs..."
             if self.site == "UOS":
+              if os.environ['HOSTNAME'].startswith("gate2") :
+                os.system("cd %s;./submit.sh; cd -" % self.jobDir)
+              else :
                 os.system("ssh uosaf0008 'cd %s;./submit.sh'" % self.jobDir)
             elif self.site == "CERN" and not os.environ['HOSTNAME'].startswith("lxplus"):
                 os.system("ssh lxplus.cern.ch 'cd %s;./submit.sh'" % self.jobDir)
