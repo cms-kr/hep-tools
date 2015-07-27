@@ -125,16 +125,15 @@ class TheJobConfig():
         if self.site == "CERN":
             if self.dest.startswith('/store/'):
                 self.transferCmd = 'eos cp '
-            elif self.dest.startswith('/cms/scratch/'):
+            elif self.dest != os.path.abspath(self.jobDir):
                 self.transferCmd = 'mv '
             else:
-                print "!!! Simple copy from batch node to any directory is forbidden in KISTI!!!"
-                sys.exit()
+                self.transferCmd = "" 
         elif self.site == "KISTI":
             if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///cms/data/xrd/%s' % self.dest
             if self.dest.startswith('root://'):
                 self.transferCmd = 'xrdcp '
-            elif self.dest != os.path.abspath(self.jobDir):
+            elif self.dest.startswith('/cms/scratch/'):
                 self.transferCmd = 'mv '
             else:
                 self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR
