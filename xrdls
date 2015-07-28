@@ -17,8 +17,6 @@ elif [ $DOMAINNAME == sscc.uos.ac.kr ]; then
       echo "Can not find valid voms-proxy at /tmp. Please, run \"voms-proxy-init --voms cms\""
       exit -1
     fi
-    
-
 elif [ $DOMAINNAME == knu.ac.kr ]; then
     XRDHOST=cluster142.knu.ac.kr
     XRDBASE=""
@@ -31,4 +29,4 @@ fi
 
 
 
-xrd $XRDHOST ls $XRDBASE/$1 | awk '{print $5}' | sed -e "s;$XRDBASE;;g" -e "s;//;/;g"
+xrd $XRDHOST ls $XRDBASE/$1 | awk '{print $5}' | sed -e "s;^$XRDBASE;;g" -e "s;//;/;g"
