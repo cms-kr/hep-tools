@@ -132,10 +132,8 @@ class TheJobConfig():
             if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///cms/data/xrd/%s' % self.dest
             if self.dest.startswith('root://'):
                 self.transferCmd = 'xrdcp '
-            elif self.dest.startswith('/cms/scratch/'):
-                self.transferCmd = 'mv '
             else:
-                self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR
+                self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR. /cms/scratch is not supporting now.
         else:
             ## Default transfer command by simple copy command
             self.transferCmd = "mv "
