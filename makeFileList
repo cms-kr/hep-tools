@@ -4,8 +4,8 @@ import sys, os
 argv = sys.argv[:]
 
 if "-o" not in argv:
-    print "Option -o FILENAME is required"
-    exit()
+    print "No -o FILENAME given. Set default samples_*.txt"
+    argv.extend(["-o", "samples.txt"])
 
 if argv.index("-o") >= len(argv)-1:
     print "Put filename after -o option"
