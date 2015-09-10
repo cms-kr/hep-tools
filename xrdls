@@ -26,7 +26,4 @@ elif [ $DOMAINNAME == cern.ch ]; then
 fi
 
 
-
-
-
 xrd $XRDHOST ls $XRDBASE/$1 | awk '{print $5}' | sed -e "s;^$XRDBASE;;g" -e "s;//;/;g"
