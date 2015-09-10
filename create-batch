@@ -20,6 +20,7 @@ def usage():
     print "   --cfg      CONFIG_FILE_cfg.py    Configuration file"
     print "  Optional :"
     print "   --queue QUEUE_NAME               Set the batch queue name"
+    print "   --secondFileList DATA_FILES      Secondary file list text file"
     print "   -n                               Do not submit jobs to batch"
     print "   --transferDest OUTPUT_LOCATION   OUTPUT DIRECTORY (/store will be assumed to SE)"
     print "   -g                               Grid certificate is required"
@@ -31,7 +32,7 @@ def usage():
 # Parse arguments
 if len(sys.argv) < 2: usage()
 try:
-    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent=', 'transferFiles=','args='])
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent=', 'transferFiles=','args=', "secondFileList="])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -108,6 +109,8 @@ class TheJobConfig():
         if '--queue' in opts: queue = opts['--queue']
         if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
         if '--args' in opts : self.additional_options = opts['--args']
+        secondFileList = None
+        if '--secondFileList' in opts:secondFileList = opts['--secondFileList']
         ## Determine submit command
         if self.scheduler == "LSB":
             self.submitCmd = 'bsub -q %s' % queue
@@ -158,6 +161,14 @@ class TheJobConfig():
         ## Sort files by its key "i", filename_[i]_[j]_hash.root
         #files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
 
+        ## Collect secondary input files
+        self.secondFiles = []
+        for f in open(secondFileList).readlines():
+            f = f.strip().strip('\',"')
+            if len(f) < 5: continue
+            if '#' == f[0] or '.root' != f[-5:]: continue
+            self.secondFiles.append(f)
+
     def initialiseWorkspace(self):
         ## Prepare working directory
         print "@@ Preparing batch jobs in", self.jobName, "..."
@@ -206,6 +217,10 @@ class TheJobConfig():
             process.source.fileNames = self.files[begin:end]
             #for modName in outFileModes:
             #    getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
+
+            ## Add secondary files if requested
+            if len(self.secondFiles) > 0:
+                process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
 
             cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
             open(cfgFileName, "w").write(process.dumpPython())
