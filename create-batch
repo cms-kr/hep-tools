@@ -25,12 +25,15 @@ def usage():
     print "   -g                               Grid certificate is required"
     print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
     print "   --transferFiles                  Additional files to transfer"
+    print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
     sys.exit()
 
 # Parse arguments
 if len(sys.argv) < 2: usage()
 try:
-    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent=', 'transferFiles='])
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'cfg=',
+                                             'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
+                                             'customise=',])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -104,6 +107,17 @@ class TheJobConfig():
         if '-g' in opts: self.doGrid   = True
         if '--queue' in opts: queue = opts['--queue']
         if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
+
+        ## Load customisation if given
+        self.customise = None
+        if '--customise' in opts:
+            customiseFile = opts['--customise']
+            if os.path.exists(customiseFile):
+                customisePath = os.path.pathname(customiseFile)
+                customiseFile = os.path.basename(customiseFile)
+                if customisePath not in sys.path: sys.path.append(customisePath)
+                tmpObj = __import__('.'.join(self.cfgFileName.split('.')[:-1]))
+                if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
 
         ## Determine submit command
         if self.scheduler == "LSB":
@@ -204,6 +218,9 @@ class TheJobConfig():
             process.source.fileNames = self.files[begin:end]
             #for modName in outFileModes:
             #    getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
+
+            ## Customise the cfg just before final output dump
+            self.customise(process)
 
             cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
             open(cfgFileName, "w").write(process.dumpPython())
