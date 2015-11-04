@@ -120,7 +120,7 @@ class TheJobConfig():
                 customisePath = os.path.dirname(customiseFile)
                 customiseFile = os.path.basename(customiseFile)
                 if customisePath not in sys.path: sys.path.append(customisePath)
-                tmpObj = __import__('.'.join(self.cfgFileName.split('.')[:-1]))
+                tmpObj = __import__(customiseFile)
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
 
         if '--args' in opts : self.additional_options = opts['--args']
