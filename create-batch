@@ -122,6 +122,7 @@ class TheJobConfig():
                 if customisePath not in sys.path: sys.path.append(customisePath)
                 tmpObj = __import__('.'.join(customiseFile.split('.')[:-1])).customise
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
+                else: print "Cannot find customise(process) function in the cfg ", customiseFile
 
         if '--args' in opts : self.additional_options = opts['--args']
         secondFileList = None
@@ -239,7 +240,7 @@ class TheJobConfig():
                 process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
 
             ## Customise the cfg just before final output dump
-            self.customise(process)
+            if self.customise != None: self.customise(process)
 
             cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
             open(cfgFileName, "w").write(process.dumpPython())
