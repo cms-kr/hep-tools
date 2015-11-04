@@ -26,13 +26,16 @@ def usage():
     print "   -g                               Grid certificate is required"
     print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
     print "   --transferFiles                  Additional files to transfer"
+    print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
     print "   --args                           general arguments"
     sys.exit()
 
 # Parse arguments
 if len(sys.argv) < 2: usage()
 try:
-    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'queue=', 'transferDest=', 'cfg=', 'maxEvent=', 'transferFiles=','args=', "secondFileList="])
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'cfg=',
+                                             'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
+                                             'args=', 'secondFileList=', 'customise=',])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -108,6 +111,19 @@ class TheJobConfig():
         if '-g' in opts: self.doGrid   = True
         if '--queue' in opts: queue = opts['--queue']
         if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
+
+        ## Load customisation if given
+        self.customise = None
+        if '--customise' in opts:
+            customiseFile = opts['--customise']
+            if os.path.exists(customiseFile):
+                customisePath = os.path.dirname(customiseFile)
+                customiseFile = os.path.basename(customiseFile)
+                if customisePath not in sys.path: sys.path.append(customisePath)
+                tmpObj = __import__('.'.join(customiseFile.split('.')[:-1]))
+                if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
+                else: print "Cannot find customise(process) function in the cfg ", customiseFile
+
         if '--args' in opts : self.additional_options = opts['--args']
         secondFileList = None
         if '--secondFileList' in opts:secondFileList = opts['--secondFileList']
@@ -185,13 +201,13 @@ class TheJobConfig():
 
         ## Load cfg file
         print "@@ Loading python cfg..."
-        sys.path.append('.')
+        sys.path.append(os.path.dirname(self.cfgFileName))
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         sys.argv=[]
         sys.argv.append(".py")
-        sys.argv.extend( self.additional_options.split())
-        process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
+        sys.argv.extend(self.additional_options.split())
+        process = __import__('.'.join(os.path.basename(self.cfgFileName).split('.')[:-1])).process
         process.maxEvents.input = self.maxEvent
         sys.stdout = cout
 
@@ -222,6 +238,9 @@ class TheJobConfig():
             ## Add secondary files if requested
             if len(self.secondFiles) > 0:
                 process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
+
+            ## Customise the cfg just before final output dump
+            if self.customise != None: self.customise(process)
 
             cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
             open(cfgFileName, "w").write(process.dumpPython())
