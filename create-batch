@@ -117,7 +117,7 @@ class TheJobConfig():
         if '--customise' in opts:
             customiseFile = opts['--customise']
             if os.path.exists(customiseFile):
-                customisePath = os.path.pathname(customiseFile)
+                customisePath = os.path.dirname(customiseFile)
                 customiseFile = os.path.basename(customiseFile)
                 if customisePath not in sys.path: sys.path.append(customisePath)
                 tmpObj = __import__('.'.join(self.cfgFileName.split('.')[:-1]))
