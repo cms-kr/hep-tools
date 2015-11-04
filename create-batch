@@ -120,7 +120,7 @@ class TheJobConfig():
                 customisePath = os.path.dirname(customiseFile)
                 customiseFile = os.path.basename(customiseFile)
                 if customisePath not in sys.path: sys.path.append(customisePath)
-                tmpObj = __import__(customiseFile)
+                tmpObj = __import__('.'.join(customiseFile.split('.')[:-1])).customise
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
 
         if '--args' in opts : self.additional_options = opts['--args']
@@ -200,13 +200,13 @@ class TheJobConfig():
 
         ## Load cfg file
         print "@@ Loading python cfg..."
-        sys.path.append('.')
+        sys.path.append(os.path.dirname(self.cfgFileName))
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         sys.argv=[]
         sys.argv.append(".py")
-        sys.argv.extend( self.additional_options.split())
-        process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
+        sys.argv.extend(self.additional_options.split())
+        process = __import__('.'.join(os.path.basename(self.cfgFileName).split('.')[:-1])).process
         process.maxEvents.input = self.maxEvent
         sys.stdout = cout
 
