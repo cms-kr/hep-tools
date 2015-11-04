@@ -120,7 +120,7 @@ class TheJobConfig():
                 customisePath = os.path.dirname(customiseFile)
                 customiseFile = os.path.basename(customiseFile)
                 if customisePath not in sys.path: sys.path.append(customisePath)
-                tmpObj = __import__('.'.join(customiseFile.split('.')[:-1])).customise
+                tmpObj = __import__('.'.join(customiseFile.split('.')[:-1]))
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
                 else: print "Cannot find customise(process) function in the cfg ", customiseFile
 
