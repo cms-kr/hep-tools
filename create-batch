@@ -20,12 +20,14 @@ def usage():
     print "   --cfg      CONFIG_FILE_cfg.py    Configuration file"
     print "  Optional :"
     print "   --queue QUEUE_NAME               Set the batch queue name"
+    print "   --secondFileList DATA_FILES      Secondary file list text file"
     print "   -n                               Do not submit jobs to batch"
     print "   --transferDest OUTPUT_LOCATION   OUTPUT DIRECTORY (/store will be assumed to SE)"
     print "   -g                               Grid certificate is required"
     print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
     print "   --transferFiles                  Additional files to transfer"
     print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
+    print "   --args                           general arguments"
     sys.exit()
 
 # Parse arguments
@@ -33,11 +35,12 @@ if len(sys.argv) < 2: usage()
 try:
     opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'cfg=',
                                              'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
-                                             'customise=',])
+                                             'args=', 'secondFileList=', 'customise=',])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
     usage()
+
 
 class TheJobConfig():
     def __init__(self, opts):
@@ -47,6 +50,7 @@ class TheJobConfig():
         self.doGrid = False
         self.doSubmit = True
         self.maxEvent = -1
+        self.additional_options=""
         hostName = os.environ['HOSTNAME']
         if hostName.startswith("lxplus") or hostName.endswith("cern.ch"):
             self.site = "CERN"
@@ -54,9 +58,9 @@ class TheJobConfig():
             queue = "8nh"
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
-            self.scheduler = "PBS"
+            self.scheduler = "CONDOR"
             opts['-g'] = True ## Enforce to carry grid certificate
-            queue = "batch"
+            #queue = "batch"
         elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
             self.site = "CCP"
             self.scheduler = "PBS"
@@ -119,6 +123,9 @@ class TheJobConfig():
                 tmpObj = __import__('.'.join(self.cfgFileName.split('.')[:-1]))
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
 
+        if '--args' in opts : self.additional_options = opts['--args']
+        secondFileList = None
+        if '--secondFileList' in opts:secondFileList = opts['--secondFileList']
         ## Determine submit command
         if self.scheduler == "LSB":
             self.submitCmd = 'bsub -q %s' % queue
@@ -136,19 +143,15 @@ class TheJobConfig():
         if self.site == "CERN":
             if self.dest.startswith('/store/'):
                 self.transferCmd = 'eos cp '
-            elif self.dest.startswith('/cms/scratch/'):
-                self.transferCmd = 'mv '
+            #elif self.dest != os.path.abspath(self.jobDir):
             else:
-                print "!!! Simple copy from batch node to any directory is forbidden in KISTI!!!"
-                sys.exit()
+                self.transferCmd = "mv "
         elif self.site == "KISTI":
-            if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///cms/data/xrd/%s' % self.dest
+            if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///xrd/%s' % self.dest
             if self.dest.startswith('root://'):
                 self.transferCmd = 'xrdcp '
-            elif self.dest != os.path.abspath(self.jobDir):
-                self.transferCmd = 'mv '
             else:
-                self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR
+                self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR. /cms/scratch is not supporting now.
         else:
             ## Default transfer command by simple copy command
             self.transferCmd = "mv "
@@ -173,6 +176,15 @@ class TheJobConfig():
         ## Sort files by its key "i", filename_[i]_[j]_hash.root
         #files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
 
+        ## Collect secondary input files
+        self.secondFiles = []
+        if secondFileList != None:
+            for f in open(secondFileList).readlines():
+                f = f.strip().strip('\',"')
+                if len(f) < 5: continue
+                if '#' == f[0] or '.root' != f[-5:]: continue
+                self.secondFiles.append(f)
+
     def initialiseWorkspace(self):
         ## Prepare working directory
         print "@@ Preparing batch jobs in", self.jobName, "..."
@@ -191,6 +203,9 @@ class TheJobConfig():
         sys.path.append('.')
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
+        sys.argv=[]
+        sys.argv.append(".py")
+        sys.argv.extend( self.additional_options.split())
         process = __import__('.'.join(self.cfgFileName.split('.')[:-1])).process
         process.maxEvents.input = self.maxEvent
         sys.stdout = cout
@@ -219,6 +234,10 @@ class TheJobConfig():
             #for modName in outFileModes:
             #    getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
 
+            ## Add secondary files if requested
+            if len(self.secondFiles) > 0:
+                process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
+
             ## Customise the cfg just before final output dump
             self.customise(process)
 
@@ -228,7 +247,7 @@ class TheJobConfig():
         ## Checking voms proxy
         if self.doGrid:
             print "@@ Checking grid certificate to access files..."
-            if os.system("voms-proxy-info -exists --hours 8") != 0:
+            if os.system("voms-proxy-info -exists --valid 8:00") != 0:
                 os.system("voms-proxy-init -voms cms --valid 144:00")
             uid = os.getuid()
             shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (self.jobDir, uid))
@@ -262,7 +281,7 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
-time cmsRun job_${{SECTION}}_cfg.py
+time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
@@ -270,7 +289,7 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
@@ -321,16 +340,31 @@ if [ _$CMS_PATH == _ ]; then
   source $CMS_PATH/cmsset_default.sh
 fi
 
+hostname
 ## Prepare workdirectory
 mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
-
 tar xzf {0}/job.tgz
 cd {1}
+PROXY_CA=/tmp/${{USER}}/PBS_${{PBS_JOBID}}/{1}/x509up_u`id -u`
+echo ${{PROXY_CA}}
+voms-proxy-info -exists --valid 8:00
+TIMEVALID=$?
+if [ -f ${{PROXY_CA}} ] && [ ${{TIMEVALID}} -eq 1 ]; then
+  echo "copy proxy ca to /tmp" 
+  cp -f ${{PROXY_CA}} /tmp
+else
+  if [ ! -f ${{PROXY_CA}} ]; then
+    echo "Can not find proxy CA"
+  fi
+  if [ ${{TIMEVALID}} -eq 1 ]; then
+    echo "Sufficient valid time"
+  fi
+fi 
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
-time cmsRun job_${{SECTION}}_cfg.py
+time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
@@ -338,7 +372,7 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
@@ -348,10 +382,6 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
-
-        if self.doGrid:
-            uid = os.getuid()
-            print>>fout, "cp -f %s/x509up_u%d /tmp/" % (self.jobDir,uid)
 
         ## Write submit script
         fout = open("%s/submit.log" % self.jobDir, "w")
@@ -386,13 +416,19 @@ if [ _$CMS_PATH == _ ]; then
   source $CMS_PATH/cmsset_default.sh
 fi
 
+hostname
 tar xzf job.tgz
-cd {1}
+cd {1}""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
+        if (self.doGrid) :
+          print>>fout,"""
+cp x509up_u`id -u` /tmp/x509up_u`id -u`"""
+
+        print>>fout,"""
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
 ls -al
-time cmsRun job_${{SECTION}}_cfg.py
+time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
 ls -al
 if [ $EXITCODE == 0 ]; then
@@ -401,7 +437,7 @@ else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         if self.transferCmd != '':
             print>>fout, """
 for FILE in %s; do
@@ -433,6 +469,8 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>jdlOut, """executable = run.sh
 universe   = vanilla
 arguments  = $(Process)
+requirements = OpSysMajorVer == 6
+
 log = condor.log
 
 getenv     = True
@@ -463,6 +501,9 @@ transfer_input_files = job.tgz"""
         if self.doSubmit:
             print "@@ Submitting jobs..."
             if self.site == "UOS":
+              if os.environ['HOSTNAME'].startswith("gate2") :
+                os.system("cd %s;./submit.sh; cd -" % self.jobDir)
+              else :
                 os.system("ssh uosaf0008 'cd %s;./submit.sh'" % self.jobDir)
             elif self.site == "CERN" and not os.environ['HOSTNAME'].startswith("lxplus"):
                 os.system("ssh lxplus.cern.ch 'cd %s;./submit.sh'" % self.jobDir)

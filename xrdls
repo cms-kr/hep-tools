@@ -3,10 +3,20 @@
 DOMAINNAME=`hostname -d`
 if [ $DOMAINNAME == sdfarm.kr ]; then
     XRDHOST=cms-xrdr.sdfarm.kr
-    XRDBASE=/cms/data/xrd
+    XRDBASE=/xrd
 elif [ $DOMAINNAME == sscc.uos.ac.kr ]; then
     XRDHOST=uosaf0007.sscc.uos.ac.kr
     XRDBASE=/cms
+    # Test voms-proxy for UOS
+    voms-proxy-info -e
+    RESULT=$?
+    if [ $RESULT -eq 0 ] 
+    then
+      echo "voms-proxy test is passed!"
+    else
+      echo "Can not find valid voms-proxy at /tmp. Please, run \"voms-proxy-init --voms cms\""
+      exit -1
+    fi
 elif [ $DOMAINNAME == knu.ac.kr ]; then
     XRDHOST=cluster142.knu.ac.kr
     XRDBASE=""
@@ -15,4 +25,5 @@ elif [ $DOMAINNAME == cern.ch ]; then
     XRDBASE=""
 fi
 
-xrd $XRDHOST ls $XRDBASE/$1 | awk '{print $5}' | sed -e "s;$XRDBASE;;g" -e "s;//;/;g"
+
+xrd $XRDHOST ls $XRDBASE/$1 | awk '{print $5}' | sed -e "s;^$XRDBASE;;g" -e "s;//;/;g"
