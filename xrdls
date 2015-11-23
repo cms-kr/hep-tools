@@ -6,7 +6,7 @@ if [ $DOMAINNAME == sdfarm.kr ]; then
     XRDBASE=/xrd
 elif [ $DOMAINNAME == sscc.uos.ac.kr ]; then
     XRDHOST=uosaf0007.sscc.uos.ac.kr
-    XRDBASE=/cms
+    XRDBASE=/storm/cms
     # Test voms-proxy for UOS
     voms-proxy-info -e
     RESULT=$?
