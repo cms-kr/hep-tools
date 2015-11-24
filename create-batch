@@ -17,6 +17,7 @@ def usage():
     print "   --jobName  NAME                  Name of job"
     print "   --fileList DATA_FILES            File list text file"
     print "   --maxFiles N                     Maximum number of files per job"
+    print "   --nJobs    N                     Number of Job sections"
     print "   --cfg      CONFIG_FILE_cfg.py    Configuration file"
     print "  Optional :"
     print "   --queue QUEUE_NAME               Set the batch queue name"
@@ -33,7 +34,7 @@ def usage():
 # Parse arguments
 if len(sys.argv) < 2: usage()
 try:
-    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'cfg=',
+    opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
                                              'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
                                              'args=', 'secondFileList=', 'customise=',])
     opts = dict(opts)
@@ -78,19 +79,9 @@ class TheJobConfig():
             print "!!! This site is not supported"
             sys.exit()
 
-        ## Override by options
+        ## (pre) load cfg file to determine the cmssw job type
+        if '--args' in opts : self.additional_options = opts['--args']
         try:
-            self.jobName = opts['--jobName']
-            self.jobDir = os.path.abspath(self.jobName)
-            self.cmsswBase = os.environ["CMSSW_BASE"]
-            self.jobBase =  self.jobDir.replace(os.path.dirname(self.cmsswBase), '').strip('/')
-            self.maxFiles = int(opts['--maxFiles'])
-
-            fileList = opts['--fileList']
-            if not os.path.exists(fileList):
-                print "ERROR: Cannot find file list", fileList
-                sys.exit()
-
             self.cfgFileName = opts['--cfg']
             if not self.cfgFileName.endswith('.py'):
                 print "ERROR: Python config file is needed"
@@ -98,6 +89,71 @@ class TheJobConfig():
             if not os.path.exists(self.cfgFileName):
                 print "ERROR: Cannot find config file", self.cfgFileName
                 sys.exit()
+        except:
+            print "!!! Error parsing cfg option or wrong cfg file"
+            usage()
+
+        sys.path.append(os.path.dirname(self.cfgFileName))
+        cout = sys.stdout
+        sys.stdout = open("/dev/null", "w")
+        sys.argv=[]
+        sys.argv.append(".py")
+        sys.argv.extend(self.additional_options.split())
+        process = __import__('.'.join(os.path.basename(self.cfgFileName).split('.')[:-1])).process
+        sys.stdout = cout
+        source = process.source
+        if source.type_() == "EmptySource":
+            if '--maxEvent' not in opts:
+                print "ERROR: --maxEvent is necessary for the EmptySource"
+                sys.exit()
+            self.maxEvent = int(opts['--maxEvent'])
+        elif source.type_() == "PoolSource":
+            if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
+            fileList = opts['--fileList']
+            if not os.path.exists(fileList):
+                print "ERROR: Cannot find file list", fileList
+                sys.exit()
+
+            ## Collect root files
+            self.files = []
+            for f in open(fileList).readlines():
+                f = f.strip()
+                f = f.strip('\',"')
+                if len(f) < 5: continue
+                if '#' == f[0] or '.root' != f[-5:]: continue
+                self.files.append(f)
+            nFiles = len(self.files)
+            if nFiles == 0:
+                print "ERROR: Empty dataset."
+                sys.exit()
+            ## Sort files by its key "i", filename_[i]_[j]_hash.root
+            #files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
+
+            ## Collect secondary input files
+            self.secondFiles = []
+            if '--secondFileList' in opts:
+                secondFileList = opts['--secondFileList']
+                for f in open(secondFileList).readlines():
+                    f = f.strip().strip('\',"')
+                    if len(f) < 5: continue
+                    if '#' == f[0] or '.root' != f[-5:]: continue
+                    self.secondFiles.append(f)
+
+            if '--maxFiles' in opts:
+                self.maxFiles = int(opts['--maxFiles'])
+            elif '--nJobs' in opts:
+                nJobs = int(opts['--nJobs'])
+                self.maxFiles = max(1, len(self.files/nJobs))
+            else:
+                print "ERROR: No maxFiles nor nJobs among the option"
+                sys.exit()
+
+        ## Override by options
+        try:
+            self.jobName = opts['--jobName']
+            self.jobDir = os.path.abspath(self.jobName)
+            self.cmsswBase = os.environ["CMSSW_BASE"]
+            self.jobBase =  self.jobDir.replace(os.path.dirname(self.cmsswBase), '').strip('/')
 
             if os.path.isdir(self.jobDir):
                 print "ERROR: Output directory already exists."
@@ -110,7 +166,6 @@ class TheJobConfig():
         if '-n' in opts: self.doSubmit = False
         if '-g' in opts: self.doGrid   = True
         if '--queue' in opts: queue = opts['--queue']
-        if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
 
         ## Load customisation if given
         self.customise = None
@@ -124,9 +179,6 @@ class TheJobConfig():
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
                 else: print "Cannot find customise(process) function in the cfg ", customiseFile
 
-        if '--args' in opts : self.additional_options = opts['--args']
-        secondFileList = None
-        if '--secondFileList' in opts:secondFileList = opts['--secondFileList']
         ## Determine submit command
         if self.scheduler == "LSB":
             self.submitCmd = 'bsub -q %s' % queue
@@ -161,30 +213,6 @@ class TheJobConfig():
         self.outFileNames = []
         if '--transferFiles' in opts:
             self.outFileNames = opts['--transferFiles'].split(',')
-
-        ## Collect root files
-        self.files = []
-        for f in open(fileList).readlines():
-            f = f.strip()
-            f = f.strip('\',"')
-            if len(f) < 5: continue
-            if '#' == f[0] or '.root' != f[-5:]: continue
-            self.files.append(f)
-        nFiles = len(self.files)
-        if nFiles == 0:
-            print "ERROR: Empty dataset."
-            sys.exit()
-        ## Sort files by its key "i", filename_[i]_[j]_hash.root
-        #files.sort(key=lambda f: int(f.split('/')[-1].split('_')[1]))
-
-        ## Collect secondary input files
-        self.secondFiles = []
-        if secondFileList != None:
-            for f in open(secondFileList).readlines():
-                f = f.strip().strip('\',"')
-                if len(f) < 5: continue
-                if '#' == f[0] or '.root' != f[-5:]: continue
-                self.secondFiles.append(f)
 
     def initialiseWorkspace(self):
         ## Prepare working directory
