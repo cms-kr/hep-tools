@@ -490,7 +490,7 @@ transfer_input_files = job.tgz"""
     def archive(self):
         ## Archive libraries and other stuffs
         archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-        archiveCmd += " --exclude tmp --exclude '*.root' --exclude 'job.tgz' --exclude .git --exclude-tag-all=.create-batch"
+        archiveCmd += " --exclude tmp --exclude 'job.tgz' --exclude .git --exclude-tag-all=.create-batch"
         print "@@ Archive files for job submission..." 
         os.system(archiveCmd)
         os.system("rm -f %s/job_*_cfg.py" % self.jobDir)
