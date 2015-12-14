@@ -233,7 +233,7 @@ class TheJobConfig():
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         sys.argv=[]
-        sys.argv.append(".py")
+        sys.argv.extend(["cmsRun", ".py"])
         sys.argv.extend(self.additional_options.split())
         process = __import__('.'.join(os.path.basename(self.cfgFileName).split('.')[:-1])).process
         process.maxEvents.input = self.maxEvent
