@@ -233,10 +233,12 @@ class TheJobConfig():
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         sys.argv=[]
-        sys.argv.append(".py")
+        sys.argv.extend(["cmsRun", ".py"])
         sys.argv.extend(self.additional_options.split())
         process = __import__('.'.join(os.path.basename(self.cfgFileName).split('.')[:-1])).process
         process.maxEvents.input = self.maxEvent
+        ## Customise the cfg
+        if self.customise != None: self.customise(process)
         sys.stdout = cout
 
         ## Memorise to modify output file names
@@ -266,9 +268,6 @@ class TheJobConfig():
             ## Add secondary files if requested
             if len(self.secondFiles) > 0:
                 process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
-
-            ## Customise the cfg just before final output dump
-            if self.customise != None: self.customise(process)
 
             cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
             open(cfgFileName, "w").write(process.dumpPython())
