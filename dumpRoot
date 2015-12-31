@@ -11,6 +11,8 @@ def dumpRoot(dirRoot, sysPath):
         if obj == None: continue
         if obj.IsA().InheritsFrom("TDirectory"):
             dumpRoot(obj, sysPath+"/"+(key.replace(' ', '_')))
+        elif obj.IsA().InheritsFrom("TPad"):
+            obj.Print("%s/%s.png" % (sysPath, key.replace(' ', '_')))
         elif obj.IsA().InheritsFrom("TH1"):
             c = TCanvas("c%s" % key, key, 500, 500)
             obj.Draw()
