@@ -10,6 +10,7 @@ import stat, shutil
 from getopt import gnu_getopt as getopt
 from math import ceil
 from datetime import datetime
+import imp
 
 def usage():
     print sys.argv[0], " : create pbs jobs"
@@ -93,13 +94,12 @@ class TheJobConfig():
             print "!!! Error parsing cfg option or wrong cfg file"
             usage()
 
-        sys.path.append(os.path.dirname(self.cfgFileName))
         cout = sys.stdout
         sys.stdout = open("/dev/null", "w")
         sys.argv=[]
-        sys.argv.append(".py")
+        sys.argv.extend(["cmsRun", ".py"])
         sys.argv.extend(self.additional_options.split())
-        process = __import__('.'.join(os.path.basename(self.cfgFileName).split('.')[:-1])).process
+        process = imp.load_source("process", self.cfgFileName).process
         sys.stdout = cout
         source = process.source
         if source.type_() == "EmptySource":
@@ -172,10 +172,7 @@ class TheJobConfig():
         if '--customise' in opts:
             customiseFile = opts['--customise']
             if os.path.exists(customiseFile):
-                customisePath = os.path.dirname(customiseFile)
-                customiseFile = os.path.basename(customiseFile)
-                if customisePath not in sys.path: sys.path.append(customisePath)
-                tmpObj = __import__('.'.join(customiseFile.split('.')[:-1]))
+                tmpObj = imp.load_source('customise', customiseFile)
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
                 else: print "Cannot find customise(process) function in the cfg ", customiseFile
 
@@ -229,13 +226,12 @@ class TheJobConfig():
 
         ## Load cfg file
         print "@@ Loading python cfg..."
-        sys.path.append(os.path.dirname(self.cfgFileName))
         cout = sys.stdout
         sys.stdout = open("%s/log.txt" % self.jobDir, "w")
         sys.argv=[]
         sys.argv.extend(["cmsRun", ".py"])
         sys.argv.extend(self.additional_options.split())
-        process = __import__('.'.join(os.path.basename(self.cfgFileName).split('.')[:-1])).process
+        process = imp.load_source('process', self.cfgFileName).process
         process.maxEvents.input = self.maxEvent
         ## Customise the cfg
         if self.customise != None: self.customise(process)
@@ -520,7 +516,6 @@ transfer_input_files = job.tgz"""
         archiveCmd += " --exclude tmp --exclude 'job.tgz' --exclude .git --exclude-tag-all=.create-batch"
         print "@@ Archive files for job submission..." 
         os.system(archiveCmd)
-        os.system("rm -f %s/job_*_cfg.py" % self.jobDir)
 
         tmpFile = open("%s/.create-batch" % self.jobDir, "w")
         tmpFile.close()
