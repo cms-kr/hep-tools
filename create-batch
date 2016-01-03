@@ -300,7 +300,7 @@ if [ _$CMS_PATH == _ ]; then
   source $CMS_PATH/cmsset_default.sh
 fi
 
-tar xzf {0}/job.tgz
+tar xzf {0}/job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
@@ -368,7 +368,7 @@ hostname
 ## Prepare workdirectory
 mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
-tar xzf {0}/job.tgz
+tar xzf {0}/job.tar.gz
 cd {1}
 PROXY_CA=/tmp/${{USER}}/PBS_${{PBS_JOBID}}/{1}/x509up_u`id -u`
 echo ${{PROXY_CA}}
@@ -441,7 +441,7 @@ if [ _$CMS_PATH == _ ]; then
 fi
 
 hostname
-tar xzf job.tgz
+tar xzf job.tar.gz
 cd {1}""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         if (self.doGrid) :
           print>>fout,"""
@@ -502,7 +502,7 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 output = job_$(Process).log
 error = job_$(Process).err
-transfer_input_files = job.tgz"""
+transfer_input_files = job.tar.gz"""
         if self.transferCmd == '':
             print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
             remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
@@ -512,13 +512,17 @@ transfer_input_files = job.tgz"""
 
     def archive(self):
         ## Archive libraries and other stuffs
-        archiveCmd = "tar czf {0}/job.tgz {1} --xform='s:{1}:{2}:' -P".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-        archiveCmd += " --exclude tmp --exclude 'job.tgz' --exclude .git --exclude-tag-all=.create-batch"
-        print "@@ Archive files for job submission..." 
-        os.system(archiveCmd)
-
         tmpFile = open("%s/.create-batch" % self.jobDir, "w")
         tmpFile.close()
+
+        print "@@ Archive files for job submission..." 
+        exclCommon = "--exclude tmp --exclude 'job.tar' --exclude 'job.tar.gz' --exclude .git"
+        os.system("tar cf {0}/job.tar {1} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
+                 + exclCommon + " --exclude-tag-all=.create-batch ")
+        os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
+                 + exclCommon)
+        os.system("gzip %s/job.tar" % self.jobDir)
+        #os.system("rm -f %s/job_*_cfg.py" % self.jobDir)
 
     def submit(self):
         if self.doSubmit:
