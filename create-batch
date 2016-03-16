@@ -516,11 +516,11 @@ transfer_input_files = job.tar.gz"""
         tmpFile.close()
 
         print "@@ Archive files for job submission..." 
-        exclCommon = "--exclude tmp --exclude 'job.tar' --exclude 'job.tar.gz' --exclude .git"
+        exclCommon = "--exclude tmp --exclude 'job.tar' --exclude 'job.tar.gz' --exclude-vcs"
         os.system("tar cf {0}/job.tar {1} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-                 + exclCommon + " --exclude-tag-all=.create-batch ")
+                 + exclCommon + " --exclude-tag-all=.create-batch --exclude-tag-all=.requestcache ")
         os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-                 + exclCommon)
+                 + exclCommon + " --exclude=*.root")
         os.system("gzip %s/job.tar" % self.jobDir)
         #os.system("rm -f %s/job_*_cfg.py" % self.jobDir)
 
