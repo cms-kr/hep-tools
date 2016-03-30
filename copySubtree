@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+import sys
+if len(sys.argv) < 3:
+    print "Usage:", sys.argv[0], "OUTPUT.root PATH_TO_SUBTREE file1 file2 file3 ..."
+
+outFile = sys.argv[1]
+subobj = sys.argv[2]
+files = [x for x in sys.argv[3:] if x.endswith('.root')]
+
+from ROOT import *
+
+chain = TChain(subobj)
+for f in files:
+    chain.Add(f)
+
+fout = TFile(outFile, "RECREATE")
+## Keep the same dir structure
+if '/' in subobj:
+    dd = fout
+    for d in subobj.split('/')[:-1]: dd = dd.mkdir(d)
+    dd.cd()
+t = chain.CopyTree("1")
+t.Write()
+fout.Close()
