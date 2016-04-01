@@ -34,4 +34,4 @@ for run in set(js1.keys()).intersection(js2):
 
     if len(outlumis) > 0: out[run] = outlumis[:]
 
-open(sys.argv[3]).write(json.dumps(out))
+open(sys.argv[3], "w").write(json.dumps(out))
