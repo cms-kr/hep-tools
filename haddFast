@@ -15,11 +15,11 @@ until [ -z $1 ]; do
     [[ -z "${FILES// }" ]] && break
     IFOUT="${FOUT//.root}_${I}.root"
     hadd $IFOUT $FILES
-    #echo rm -f $FILES
+    #echo rm -f $FILES ## For safety, do not remove original ones
     I=$((I+1))
 
     FOUTSUB="$FOUTSUB $IFOUT"
 done
 hadd $FOUT $FOUTSUB
-#echo rm -f $FOUTSUB
+rm -f $FOUTSUB
 
