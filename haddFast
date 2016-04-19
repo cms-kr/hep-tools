@@ -1,0 +1,25 @@
+#!/bin/bash
+
+## Partial merge to make the hadd fast
+FOUT=$1
+
+FOUTSUB=""
+I=1
+until [ -z $1 ]; do
+    FILES=""
+    for j in `seq 10`; do
+        shift
+        FILES="$FILES $1"
+        [ -z $1 ] && break
+    done
+    [[ -z "${FILES// }" ]] && break
+    IFOUT="${FOUT//.root}_${I}.root"
+    hadd $IFOUT $FILES
+    #echo rm -f $FILES
+    I=$((I+1))
+
+    FOUTSUB="$FOUTSUB $IFOUT"
+done
+hadd $FOUT $FOUTSUB
+#echo rm -f $FOUTSUB
+
