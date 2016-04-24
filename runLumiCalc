@@ -1,0 +1,59 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+    echo "Usage: runLumiCalc normtag"
+    echo "Usage: runLumiCalc lumi NORMTAG YOUR_LUMI_JSON_FILE"
+    exit 1
+fi
+
+BRILPATH=/afs/cern.ch/cms/lumi/brilconda-1.0.3/bin
+TAGPATH=/afs/cern.ch/user/l/lumipro/public/normtag_file
+
+OPT=$1
+if [ $OPT == "normtag" ]; then
+    echo -e "@@@ Normtags under $TAGPATH\n"
+    ls $TAGPATH
+    exit
+elif [ $OPT == "lumi" ]; then
+    if [ $# -lt 3 ]; then
+        echo "!!! Please provide NORMTAG and your lumi json file"
+        exit 1
+    fi
+
+    TAGFILE=$TAGPATH/$2
+    if [ ! -f $TAGFILE ]; then
+        echo "!!! Cannot find normtag file. Please check spelling"
+        exit 3
+    fi
+    LUMIFILE=$3
+    if [ ! -f $LUMIFILE ]; then
+        echo "!!! Cannot find json file. Please check file path"
+        exit 3
+    fi
+
+    if [ ! -f $HOME/.local/bin/brilcalc ]; then
+        echo "@@@ Installing brilcalc..."
+        pip install --install-option="--prefix=$HOME/.local" brilws
+        #pip install --install-option="--prefix=$HOME/.local" schema
+        #pip install --install-option="--prefix=$HOME/.local" numpy
+        #pip install --install-option="--prefix=$HOME/.local" pandas
+    fi
+    export PATH=$HOME/.local/bin:$BRILPATH:$PATH
+
+    which brilcalc > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "!!! Cannot find brilcalc"
+        exit 2
+    fi
+    echo "Running brilcalc"
+
+    #echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
+    #brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
+    echo brilcalc lumi --normtag $TAGFILE -i $LUMIFILE
+    brilcalc lumi --normtag $TAGFILE -i $LUMIFILE
+
+    exit
+else
+    echo "!!! First argument must be normtag or lumi"
+    exit 1
+fi
