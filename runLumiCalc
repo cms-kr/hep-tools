@@ -31,6 +31,7 @@ elif [ $OPT == "lumi" ]; then
         exit 3
     fi
 
+    export PATH=$HOME/.local/bin:$BRILPATH:$PATH
     if [ ! -f $HOME/.local/bin/brilcalc ]; then
         echo "@@@ Installing brilcalc..."
         pip install --install-option="--prefix=$HOME/.local" brilws
@@ -38,7 +39,6 @@ elif [ $OPT == "lumi" ]; then
         #pip install --install-option="--prefix=$HOME/.local" numpy
         #pip install --install-option="--prefix=$HOME/.local" pandas
     fi
-    export PATH=$HOME/.local/bin:$BRILPATH:$PATH
 
     which brilcalc > /dev/null
     if [ $? -ne 0 ]; then
