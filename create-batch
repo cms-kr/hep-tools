@@ -143,7 +143,7 @@ class TheJobConfig():
                 self.maxFiles = int(opts['--maxFiles'])
             elif '--nJobs' in opts:
                 nJobs = int(opts['--nJobs'])
-                self.maxFiles = max(1, len(self.files/nJobs))
+                self.maxFiles = max(1, len(self.files)/nJobs)
             else:
                 print "ERROR: No maxFiles nor nJobs among the option"
                 sys.exit()
