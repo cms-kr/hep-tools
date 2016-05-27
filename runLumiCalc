@@ -49,7 +49,7 @@ elif [ $OPT == "lumi" ]; then
 
     #echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
     #brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
-    echo brilcalc lumi --normtag $TAGFILE -i $LUMIFILE
+    echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
     brilcalc lumi --normtag $TAGFILE -i $LUMIFILE
 
     exit
