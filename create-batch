@@ -320,16 +320,16 @@ for FILE in %s; do
     PREFIX=${FILE%%.${EXT}}
     TRANSFERCMD=%s
     DESTDIR=%s
-    ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+    ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
@@ -415,16 +415,16 @@ for FILE in %s; do
     PREFIX=${FILE%%.${EXT}}
     TRANSFERCMD=%s
     DESTDIR=%s
-    ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+    ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
@@ -493,16 +493,16 @@ for FILE in %s; do
     PREFIX=${FILE%%.${EXT}}
     TRANSFERCMD=%s
     DESTDIR=%s
-    ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+    ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        ${TRNSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD}${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` # >> %s/submit.log" % self.jobDir
