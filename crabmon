@@ -1,0 +1,110 @@
+#!/usr/bin/python
+
+from Tkinter import *
+import sys, os
+
+class Line:
+    def __init__(self, frame, name, size):
+        nRow = size % 25
+        nCol = (size / 25)*6
+        self.name = name
+        self.label = Label(frame, text=name)
+        self.label.grid(row=nRow, column=nCol, sticky=W)
+        self.statLabel = Label(frame, text="?/?")
+        self.statLabel.grid(row=nRow, column=nCol+1, sticky=E)
+        self.statusBtn = Button(frame, text="status", command=self.status)
+        self.statusBtn.grid(row=nRow, column=nCol+2, sticky=EW)
+        self.getBtn = Button(frame, text="get", command=self.get, state=DISABLED)
+        self.getBtn.grid(row=nRow, column=nCol+3, sticky=EW)
+        self.resubmitBtn = Button(frame, text="resubmit", command=self.resubmit, state=DISABLED)
+        self.resubmitBtn.grid(row=nRow, column=nCol+4, sticky=EW)
+        self.finishBtn = Button(frame, text="finish", command=self.finish, state=DISABLED)
+        self.finishBtn.grid(row=nRow, column=nCol+5, sticky=EW)
+
+        self.readLog(name)
+
+    def status(self):
+        os.system("crab status %s" % self.name)
+        self.readLog(self.name)
+        print "@ status(%s) done" % self.name
+
+    def get(self):
+        self.getBtn['state'] = "disabled"
+        os.system("crab get %s" % self.name)
+        self.getBtn.configure(text="get")
+        self.status()
+        self.readLog(self.name)
+        print "@ get(%s) done" % self.name
+
+    def readLog(self, name):
+        nSuccess, nFail, nJobs = 0, 0, 0
+
+        if not os.path.exists("%s/crab.log" % name):
+            os.system("crab status %s" % self.name)
+        lines = open("%s/crab.log" % self.name).readlines()
+        if len(lines) == 0:
+            os.system("crab status %s" % self.name)
+            lines = open("%s/crab.log" % self.name).readlines()
+        statLine = -1
+        for i, line in enumerate(reversed(lines)):
+            if ':' not in line: continue
+            if line.split(':')[0] == 'Jobs status':
+                statLine = i
+                break
+        if statLine > 0:
+            statLine = len(lines)-statLine-1
+            for i in range(statLine, len(lines)+1):
+                line = lines[i].strip()
+                if ':' not in line: break
+                line = line.split(':')[-1].replace('(', ' ').replace(')', ' ').strip()
+                if line == '': continue
+                status, frac, stat = line.split()
+                nJobs = int(stat.split('/')[1])
+                if status == 'finished': nSuccess = int(stat.split('/')[0])
+                elif status == 'failed': nFail = int(stat.split('/')[0])
+
+            self.statLabel.configure(text="%d/%d/%d" % (nSuccess, nFail, nJobs))
+            if nSuccess == nJobs:
+                self.finishBtn['state'] = 'normal'
+            if nFail > 0:
+                self.resubmitBtn['state'] = 'normal'
+
+    def resubmit(self):
+        self.resubmitBtn['state'] = 'disabled'
+        self.resubmitBtn.configure(fg='gray')
+        os.system("crab resubmit %s" % (self.name))
+        self.status()
+        self.readLog(self.name)
+        print "@ resubmit(%s) done" % self.name
+
+    def finish(self):
+        os.system("crab report %s" % self.name)
+        os.system("mv %s done/" % self.name)
+        self.statusBtn['state'] = 'disabled'
+        self.getBtn['state'] = 'disabled'
+        self.finishBtn['state'] = 'disabled'
+        self.label.configure(fg='gray')
+        self.statLabel.configure(fg='gray')
+        print "@ finish(%s) done" % self.name
+
+if __name__ == '__main__':
+    ## Build GUI
+    if not os.path.exists("done"):
+        os.mkdir("done")
+    objs = []
+    root = Tk()
+    lFrame = Frame(root)
+    size = 0
+    for d in sorted(os.listdir(".")):
+        if d[0] == '.': continue
+        if not os.path.isdir(d): continue
+        if ".requestcache" not in os.listdir(d): continue
+
+        line = Line(lFrame, d, size)
+        objs.append(line)
+        size += 1
+
+    lFrame.pack()
+
+    root.mainloop()
+
