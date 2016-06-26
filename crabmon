@@ -64,6 +64,8 @@ class Line:
                 elif status == 'failed': nFail = int(stat.split('/')[0])
 
             self.statLabel.configure(text="%d/%d/%d" % (nSuccess, nFail, nJobs))
+            if nSuccess > 0:
+                self.getBtn['state'] = 'normal'
             if nSuccess == nJobs:
                 self.finishBtn['state'] = 'normal'
             if nFail > 0:
