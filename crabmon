@@ -5,7 +5,7 @@ import sys, os
 
 class Line:
     def __init__(self, frame, name, size):
-        nRow = size % 25
+        nRow = size % 25 + 1
         nCol = (size / 25)*6
         self.name = name
         self.label = Label(frame, text=name)
@@ -24,11 +24,13 @@ class Line:
         self.readLog(name)
 
     def status(self):
+        if not os.path.exists("%s/.requestcache" % self.name): return
         os.system("crab status %s" % self.name)
         self.readLog(self.name)
         print "@ status(%s) done" % self.name
 
     def get(self):
+        if not os.path.exists("%s/.requestcache" % self.name): return
         self.getBtn['state'] = "disabled"
         os.system("crab get %s" % self.name)
         self.getBtn.configure(text="get")
@@ -72,30 +74,46 @@ class Line:
                 self.resubmitBtn['state'] = 'normal'
 
     def resubmit(self):
+        if not os.path.exists("%s/.requestcache" % self.name): return
         self.resubmitBtn['state'] = 'disabled'
-        self.resubmitBtn.configure(fg='gray')
         os.system("crab resubmit %s" % (self.name))
         self.status()
         self.readLog(self.name)
         print "@ resubmit(%s) done" % self.name
 
     def finish(self):
+        if not os.path.exists("%s/.requestcache" % self.name): return
         os.system("crab report %s" % self.name)
         os.system("mv %s done/" % self.name)
         self.statusBtn['state'] = 'disabled'
+        self.resubmitBtn['state'] = 'disabled'
         self.getBtn['state'] = 'disabled'
         self.finishBtn['state'] = 'disabled'
         self.label.configure(fg='gray')
         self.statLabel.configure(fg='gray')
         print "@ finish(%s) done" % self.name
 
+objs = []
+def status_all():
+    for obj in objs:
+        obj.status()
+
+def resubmit_all():
+    for obj in objs:
+        obj.resubmit()
+
 if __name__ == '__main__':
     ## Build GUI
     if not os.path.exists("done"):
         os.mkdir("done")
-    objs = []
     root = Tk()
     lFrame = Frame(root)
+
+    allStatusBtn = Button(lFrame, text="status_all", command=status_all)
+    allResubmitBtn = Button(lFrame, text="resubmit_all", command=resubmit_all)
+    allStatusBtn.grid(row=0, column=0, sticky=E)
+    allResubmitBtn.grid(row=0, column=1, sticky=W)
+
     size = 0
     for d in sorted(os.listdir(".")):
         if d[0] == '.': continue

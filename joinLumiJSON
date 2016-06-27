@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+import sys, os
+import json
+
+if len(sys.argv) < 3 or sys.argv[2] not in ("and", "or", "not"):
+    print "Usage: %s input1.json and/not input2.json" % (sys.argv[0])
+    print "       Operator 'and' to get LS in both of JSON files"
+    print "       Operator 'or'  to get LS in any of JSON files"
+    print "       Operator 'not' to get LS that are in input1.json but not in input2.json"
+    sys.exit(1)
+
+js1 = json.load(open(sys.argv[1]))
+js2 = json.load(open(sys.argv[3]))
+op = sys.argv[2]
+
+runs = js1.keys()
+if op == "or": runs = list(set(runs).union(set(js2.keys())))
+
+out = {}
+for run in runs:
+    if op == "and" and run not in js2: continue
+
+    joinedlumis = []
+    lumis1, lumis2 = [], []
+    if run in js1:
+        for x in js1[run]:
+            lumis1.extend(range(x[0],x[1]+1))
+    if run in js2:
+        for x in js2[run]:
+            lumis2.extend(range(x[0],x[1]+1))
+
+    if op == "and":
+        joinedlumis = list(set(lumis1).intersection(set(lumis2)))
+    elif op == "or":
+        joinedlumis = list(set(lumis1).union(set(lumis2)))
+    elif op == "not":
+        joinedlumis = list(set(lumis1).difference(set(lumis2)))
+    if len(joinedlumis) == 0: continue
+
+    outlumis = [[joinedlumis[0],joinedlumis[0]]]
+    for lumi in joinedlumis:
+        if lumi-outlumis[-1][1] == 1: outlumis[-1][1] = lumi
+        elif lumi > outlumis[-1][1] > 1: outlumis.append([lumi,lumi])
+
+    out[run] = outlumis
+
+print json.dumps(out)
