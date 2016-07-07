@@ -72,6 +72,8 @@ class Line:
                 self.finishBtn['state'] = 'normal'
             if nFail > 0:
                 self.resubmitBtn['state'] = 'normal'
+            else:
+                self.resubmitBtn['state'] = 'disabled'
 
     def resubmit(self):
         if not os.path.exists("%s/.requestcache" % self.name): return
@@ -107,13 +109,8 @@ if __name__ == '__main__':
     if not os.path.exists("done"):
         os.mkdir("done")
     root = Tk()
+
     lFrame = Frame(root)
-
-    allStatusBtn = Button(lFrame, text="status_all", command=status_all)
-    allResubmitBtn = Button(lFrame, text="resubmit_all", command=resubmit_all)
-    allStatusBtn.grid(row=0, column=0, sticky=E)
-    allResubmitBtn.grid(row=0, column=1, sticky=W)
-
     size = 0
     for d in sorted(os.listdir(".")):
         if d[0] == '.': continue
@@ -123,8 +120,14 @@ if __name__ == '__main__':
         line = Line(lFrame, d, size)
         objs.append(line)
         size += 1
-
     lFrame.pack()
+
+    dFrame = Frame(root)
+    allStatusBtn = Button(dFrame, text="status_all", command=status_all)
+    allResubmitBtn = Button(dFrame, text="resubmit_all", command=resubmit_all)
+    allStatusBtn.pack(side=RIGHT)
+    allResubmitBtn.pack(side=RIGHT)
+    dFrame.pack()
 
     root.mainloop()
 
