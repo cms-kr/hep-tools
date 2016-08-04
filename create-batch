@@ -323,6 +323,7 @@ else
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
+alias eos='/afs/cern.ch/project/eos/installation/0.3.84-aquamarine/bin/eos.select'
 for FILE in %s; do
     EXT=${FILE##*.}
     PREFIX=${FILE%%.${EXT}}
