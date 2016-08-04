@@ -103,10 +103,11 @@ class TheJobConfig():
         sys.stdout = cout
         source = process.source
         if source.type_() == "EmptySource":
-            if '--maxEvent' not in opts:
-                print "ERROR: --maxEvent is necessary for the EmptySource"
+            if '--maxEvent' not in opts or '--nJobs' not in opts:
+                print "ERROR: --maxEvent, --nJobs are necessary for the EmptySource"
                 sys.exit()
             self.maxEvent = int(opts['--maxEvent'])
+            self.nSection = int(opts['--nJobs'])
         elif source.type_() == "PoolSource":
             if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
             fileList = opts['--fileList']
@@ -251,22 +252,29 @@ class TheJobConfig():
 
         ## Split files into jobs and write python cfg
         print "@@ Splitting jobs..."
-        nFiles = len(self.files)
-        self.nSection = int(ceil(1.0*nFiles/self.maxFiles))
-        for section in range(self.nSection):
-            begin = section*self.maxFiles
-            end = min(begin+self.maxFiles, nFiles)
+        if hasattr(self, 'files'):
+            nFiles = len(self.files)
+            self.nSection = int(ceil(1.0*nFiles/self.maxFiles))
+            for section in range(self.nSection):
+                begin = section*self.maxFiles
+                end = min(begin+self.maxFiles, nFiles)
 
-            process.source.fileNames = self.files[begin:end]
-            #for modName in outFileModes:
-            #    getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
+                process.source.fileNames = self.files[begin:end]
+                #for modName in outFileModes:
+                #    getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
 
-            ## Add secondary files if requested
-            if len(self.secondFiles) > 0:
-                process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
+                ## Add secondary files if requested
+                if len(self.secondFiles) > 0:
+                    process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
 
-            cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
-            open(cfgFileName, "w").write(process.dumpPython())
+                cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
+                open(cfgFileName, "w").write(process.dumpPython())
+        else:
+            for section in range(self.nSection):
+                cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
+                for shift, p in enumerate(process.RandomNumberGeneratorService.parameterNames_()):
+                    getattr(process.RandomNumberGeneratorService, p).initialSeed = section+1000+shift
+                open(cfgFileName, "w").write(process.dumpPython())
 
         ## Checking voms proxy
         if self.doGrid:
