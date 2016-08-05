@@ -193,7 +193,7 @@ class TheJobConfig():
             self.dest = os.path.abspath(self.dest)
         if self.site == "CERN":
             if self.dest.startswith('/store/'):
-                self.transferCmd = 'eos cp '
+                self.transferCmd = '"eos cp "'
             #elif self.dest != os.path.abspath(self.jobDir):
             else:
                 self.transferCmd = "mv "
