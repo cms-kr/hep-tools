@@ -192,7 +192,8 @@ class TheJobConfig():
         if not self.dest.startswith('/') and '://' not in self.dest:
             self.dest = os.path.abspath(self.dest)
         if self.site == "CERN":
-            if self.dest.startswith('/store/'):
+            if self.dest.startswith('/store/'): self.dest = '/eos/cms'+self.dest
+            if self.dest.startswith('/eos/cms/'):
                 self.transferCmd = '"eos cp "'
             #elif self.dest != os.path.abspath(self.jobDir):
             else:
