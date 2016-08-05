@@ -223,7 +223,9 @@ class TheJobConfig():
                 os.system("chmod go+w %s" % self.dest)
         elif self.transferCmd.startswith('eos'):
             print "@@ Preparing output eos directory in", self.dest, "..."
-            os.system("eos mkdir -p %s" % self.dest)
+            os.system("""source /afs/cern.ch/project/eos/installation/cms/etc/setup.sh
+                         shopt -s expand_aliases
+                         eos mkdir -p %s""" % self.dest)
 
         ## Load cfg file
         print "@@ Loading python cfg..."
@@ -323,7 +325,7 @@ else
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
-alias eos='/afs/cern.ch/project/eos/installation/0.3.84-aquamarine/bin/eos.select'
+source /afs/cern.ch/project/eos/installation/cms/etc/setup.sh
 for FILE in %s; do
     EXT=${FILE##*.}
     PREFIX=${FILE%%.${EXT}}
@@ -561,9 +563,12 @@ transfer_input_files = job.tar.gz"""
         tmpFile.close()
 
         print "@@ Archive files for job submission..." 
-        exclCommon = "--exclude tmp --exclude 'job.tar' --exclude 'job.tar.gz' --exclude-vcs"
+        exclCommon = "--exclude tmp --exclude 'job.tar' --exclude 'job.tar.gz' --exclude-vcs --exclude-tag-all=.requestcache "
         os.system("tar cf {0}/job.tar {1} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-                 + exclCommon + " --exclude-tag-all=.create-batch --exclude-tag-all=.requestcache ")
+                 + exclCommon + " --exclude-tag-all=.create-batch "
+                 + " --exclude={0}/src/*/*/data --exclude=*.root".format(self.cmsswBase))
+        os.system("tar rf {0}/job.tar {1}/src/*/*/data --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
+                 + exclCommon + " --exclude-tag-all=.create-batch ")
         os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude=*.root")
         os.system("gzip %s/job.tar" % self.jobDir)
