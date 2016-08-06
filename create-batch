@@ -192,9 +192,9 @@ class TheJobConfig():
         if not self.dest.startswith('/') and '://' not in self.dest:
             self.dest = os.path.abspath(self.dest)
         if self.site == "CERN":
-            if self.dest.startswith('/store/'): self.dest = '/eos/cms'+self.dest
-            if self.dest.startswith('/eos/cms/'):
-                self.transferCmd = '"eos cp "'
+            if self.dest.startswith('/store/'): self.dest = 'root://eoscms//eos/cms'+self.dest
+            if self.dest.startswith('root://'):
+                self.transferCmd = '"xrdcp "'
             #elif self.dest != os.path.abspath(self.jobDir):
             else:
                 self.transferCmd = "mv "
@@ -224,8 +224,8 @@ class TheJobConfig():
                 os.system("chmod go+w %s" % self.dest)
         elif self.transferCmd.startswith('eos'):
             print "@@ Preparing output eos directory in", self.dest, "..."
-            os.system("""source /afs/cern.ch/project/eos/installation/cms/etc/setup.sh
-                         shopt -s expand_aliases
+            os.system("""shopt -s expand_aliases
+                         source /afs/cern.ch/project/eos/installation/cms/etc/setup.sh
                          eos mkdir -p %s""" % self.dest)
 
         ## Load cfg file
@@ -316,6 +316,7 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
+echo cmsRun job_${{SECTION}}_cfg.py {3}
 time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
@@ -326,21 +327,23 @@ else
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
-source /afs/cern.ch/project/eos/installation/cms/etc/setup.sh
 for FILE in %s; do
     EXT=${FILE##*.}
     PREFIX=${FILE%%.${EXT}}
     TRANSFERCMD=%s
     DESTDIR=%s
+    echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
+        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
         ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
+        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
         ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
