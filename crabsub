@@ -1,0 +1,98 @@
+#!/usr/bin/python
+
+from Tkinter import *
+import sys, os
+
+from WMCore.Configuration import Configuration
+from CRABAPI.RawCommand import crabCommand
+from copy import deepcopy
+
+class Line:
+    def __init__(self, frame, config, dsetInfo, size):
+        name = dsetInfo['name']
+        dset = dsetInfo['DataSetName']
+
+        self.config = deepcopy(config)
+        self.config.General.requestName = name
+        self.config.Data.inputDataset = dset
+
+        nRow = size % 25 + 1
+        nCol = (size / 25)*2
+        self.name = name
+        self.isToSubmit = IntVar()
+        self.cbox = Checkbutton(frame, text=name, variable=self.isToSubmit)
+        self.cbox.select()
+        self.cbox.grid(row=nRow, column=nCol, sticky=W)
+        self.dsetLabel = Label(frame, text=dset)
+        self.dsetLabel.grid(row=nRow, column=nCol+1, sticky=W)
+
+    def submit(self):
+        print "@ submit(%s)" % self.name
+        print self.config.General.requestName
+        crabCommand('submit', config=self.config)
+        print "@ submit(%s) done" % self.name
+
+objs = []
+def submit_checked():
+    print '-'*40
+    for obj in objs:
+        if obj.isToSubmit.get() == 0: continue
+        obj.submit()
+
+def select_all():
+    for obj in objs: obj.isToSubmit.set(1)
+
+def deselect_all():
+    for obj in objs: obj.isToSubmit.set(0)
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print "Usage: crabsub CRABCONFIG.py DATASETLIST.txt"
+        sys.exit(1)
+    if not os.path.exists(sys.argv[1]):
+        print "Cannot find crab configuration file", sys.argv[1]
+        sys.exit(2)
+    if not os.path.exists(sys.argv[2]):
+        print "Cannot find dataset list file", sys.argv[2]
+        sys.exit(3)
+
+    import imp
+    config = imp.load_source('', sys.argv[1]).config
+
+    datasets = []
+    for line in open(sys.argv[2]).readlines():
+        if line.startswith("#"): continue
+        line = line.strip().split()
+        if len(line) != 2: continue
+        if not line[0].startswith('/') or len(line[0].split('/')) != 4:
+            print "dataset name must be /A/B/C format"
+            print "Skipping", line[0]
+            continue
+        if line[1].startswith('/'):
+            print "output directory name should not start with '/'"
+            print "Skipping", line[1]
+            continue
+        datasets.append({'DataSetName':line[0], 'name':line[1]})
+
+    ## Build GUI
+    root = Tk()
+
+    lFrame = Frame(root)
+    size = 0
+    for dsetInfo in datasets:
+        line = Line(lFrame, config, dsetInfo, size)
+        objs.append(line)
+        size += 1
+    lFrame.pack()
+
+    dFrame = Frame(root)
+    selectAllBtn = Button(dFrame, text="select_all", command=select_all)
+    deselectAllBtn = Button(dFrame, text="deselect_all", command=deselect_all)
+    allSubmitBtn = Button(dFrame, text="submit_checked", command=submit_checked)
+    selectAllBtn.pack(side=LEFT)
+    deselectAllBtn.pack(side=LEFT)
+    allSubmitBtn.pack(side=RIGHT)
+    dFrame.pack()
+
+    root.mainloop()
+
