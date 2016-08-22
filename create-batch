@@ -30,6 +30,7 @@ def usage():
     print "   --transferFiles                  Additional files to transfer"
     print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
     print "   --args                           general arguments"
+    print "   --firstRun N                     For MC: run number"
     sys.exit()
 
 # Parse arguments
@@ -37,13 +38,14 @@ if len(sys.argv) < 2: usage()
 try:
     opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
                                              'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
-                                             'args=', 'secondFileList=', 'customise=',])
+                                             'args=', 'secondFileList=', 'customise=', 'firstRun=',])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
     usage()
 
 
+import FWCore.ParameterSet.Config as cms
 class TheJobConfig():
     def __init__(self, opts):
         ## Initialise configuration, set site-dependent default values
@@ -108,6 +110,9 @@ class TheJobConfig():
                 sys.exit()
             self.maxEvent = int(opts['--maxEvent'])
             self.nSection = int(opts['--nJobs'])
+            self.firstRun = 1
+            if '--firstRun' in opts:
+                self.firstRun = int(opts['--firstRun'])
         elif source.type_() == "PoolSource":
             if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
             fileList = opts['--fileList']
@@ -275,8 +280,10 @@ class TheJobConfig():
         else:
             for section in range(self.nSection):
                 cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
+                process.source.firstRun = cms.untracked.uint32(self.firstRun)
+                process.source.firstLuminosityBlock = cms.untracked.uint32(section+1)
                 for shift, p in enumerate(process.RandomNumberGeneratorService.parameterNames_()):
-                    getattr(process.RandomNumberGeneratorService, p).initialSeed = section+1000+shift
+                    getattr(process.RandomNumberGeneratorService, p).initialSeed = section+1000+shift+1000*self.firstRun
                 open(cfgFileName, "w").write(process.dumpPython())
 
         ## Checking voms proxy
