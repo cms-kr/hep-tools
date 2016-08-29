@@ -5,6 +5,7 @@ FOUT=$1
 shift
 
 NCPU=`cat /proc/cpuinfo | grep processor | wc -l`
+FOUTSUB=`echo $@ | xargs -n10 | awk '{print "'${FOUT//.root}'_"++x".root"}'`
 
 echo $@ | xargs -n10 | awk '{print "'${FOUT//.root}'_"++x".root "$0}' | xargs -L1 -P$NCPU -exec 'hadd'
 [ $? -eq 0 ] && hadd -f $FOUT $FOUTSUB && rm -f $FOUTSUB
