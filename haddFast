@@ -2,23 +2,10 @@
 
 ## Partial merge to make the hadd fast
 FOUT=$1
+shift
 
-FOUTSUB=""
-I=1
-until [ -z $1 ]; do
-    FILES=""
-    for j in `seq 10`; do
-        shift
-        FILES="$FILES $1"
-        [ -z $1 ] && break
-    done
-    [[ -z "${FILES// }" ]] && break
-    IFOUT="${FOUT//.root}_${I}.root"
-    hadd $IFOUT $FILES
-    #echo rm -f $FILES ## For safety, do not remove original ones
-    I=$((I+1))
+NCPU=`cat /proc/cpuinfo | grep processor | wc -l`
 
-    FOUTSUB="$FOUTSUB $IFOUT"
-done
-hadd -f $FOUT $FOUTSUB && rm -f $FOUTSUB
+echo $@ | xargs -n10 | awk '{print "'${FOUT//.root}'_"++x".root "$0}' | xargs -L1 -P$NCPU -exec 'hadd'
+[ $? -eq 0 ] && hadd -f $FOUT $FOUTSUB && rm -f $FOUTSUB
 
