@@ -3,7 +3,7 @@ import os, sys, time,glob,re
 from optparse import OptionParser
 
 class submitCondor :
-  output_path = None
+  path = None
   input_list = []
   title = None
   pyCfg = None 
@@ -14,10 +14,10 @@ class submitCondor :
     self.pwd = os.getcwd()
  
   def makeDirectory(self) :
-    time_dir = time.strftime(self.output_path+"__%d%b%Y_%HH%MM/",time.localtime())
+    time_dir = time.strftime(self.path+"__%d%b%Y_%HH%MM/",time.localtime())
     os.mkdir(time_dir)
     os.system("cp %s %s"%(self.pyCfg, time_dir))
-    self.output_path = time_dir
+    self.path = time_dir
     os.chdir( time_dir) 
     self.makeCmdFiles( )
     for idx, inputfile in enumerate(self.input_list) :
@@ -28,19 +28,25 @@ class submitCondor :
       
 
   def getVariable( self ) :
-    usage = "%prog [options] pyROOT_Script.py\negs)submitCondor -i /pnfs/user/cat_data/JpsiFilteredCattuple/ -p \"catTuple*.root\" calAngle.py\nInfo) PyROOT_Script.py's arguments must be <input-file> <output-file>\n"
+    usage = """%prog [options] pyROOT_Script.py
+egs)submitCondor -f filelist.txt -j ANA -o ntuple.root -n 5"""
     parser = OptionParser(usage)
-    parser.add_option("-i","--inpath",action="store",type="string",dest="inputPath",help="input files(.ROOT)'s directory path.")
-    parser.add_option("-o","--outpath",action="store",type="string",default="ANA_ROOT",dest="outputPath",help="output file path. (Default : ANA_ROOT)")
-    parser.add_option("-p","--pattern",action="store",type="string",default="*.root",dest="pattern",help="Input file's name pattern.(Default : \"*.root\")")  
+    parser.add_option("-f","--txtfile",action="store",type="string",dest="textFile",metavar='filelist.txt',help="input files(.ROOT)'s list (text)")
+    parser.add_option("-n","--number",action="store",type="int",dest="num",metavar=1,help="# of files per job")
+    parser.add_option("-p","--path",action="store",type="string",default="ANA_ROOT",metavar='ANA_ROOT',dest="path",help="Path of outputs. (Default : ANA_ROOT)")
+    parser.add_option("-o","--outputh",action="store",type="string",default="ntuple.root",metavar='ntuple.root',dest="output",help="output file. (Default : ntuple.root)")
     parser.add_option("-a","--argument",action="store",type="string",default=None,dest="argument",help="Argumnt for Input variables")  
-    parser.add_option("-j","--jobName",action="store",type="string",default="ANA",dest="jobName",help="Job Name.(Default : ANA) ")  
+    parser.add_option("-j","--jobName",action="store",type="string",default="ANA",metavar='ANA', dest="jobName",help="Job Name.(Default : ANA) ")  
     (options,args) = parser.parse_args()
-    self.output_path = options.outputPath 
+    self.path = options.path 
     self.jobName = options.jobName
-    self.input_list = glob.glob( options.inputPath+'/'+ options.pattern)
     self.pyCfg = args[0]
     self.argument = options.argument
+    self.output= options.output
+    if ( options.textFile is not None) :
+      self.input_list = open( options.textFile).readlines()
+    else :
+      print "Did not input source"
 
   def makeCmdFiles(self ) :
     jdl = """
@@ -57,14 +63,15 @@ log         = condor.log
   def addCmdFiles(self, input, output) :
     flag = False
     if ( self.argument == None) :
-      self.argument = "%s %s"%(input,output)
+      only_filename = input.split('/')[-1]
+      self.argument = "%s %s"%(only_filename.strip(),output )
       flag = True
     self.jdl += """
 InitialDir = %s_$(Process)
 arguments  = %s
 output = job_$(Process).log
 error = job_$(Process).err
-transfer_input_files = %s
+#transfer_input_files = %s
 transfer_output_files = %s
 queue 
 """ %(self.jobName, self.argument, input, output)
@@ -78,7 +85,7 @@ queue
     return 
 
   def Print(self) :
-    print self.output_path
+    print self.path
     print "# of files : %d"%(len(self.input_list))
     print self.pyCfg
 
@@ -101,16 +108,8 @@ queue
       print command
       os.system(command)
   """
-
-
 if __name__ == "__main__" :
   filename = sys.argv[1]
   sb = submitCondor()
   sb.Ana()
   sb.Print()
-
-
-
-
-
-
