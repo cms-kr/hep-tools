@@ -6,26 +6,44 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-BRILPATH=/afs/cern.ch/cms/lumi/brilconda-1.0.3/bin
-TAGPATH=/afs/cern.ch/user/l/lumipro/public/normtag_file
+BRILOPTS=""
+if [ -d /afs/cern.ch/cms -a -d /afs/cern.ch/user ]; then
+    BRILPATH=/afs/cern.ch/cms/lumi/brilconda-1.0.3/bin
+    TAGPATH=/afs/cern.ch/user/l/lumipro/public/normtag_file
+else
+    if [ ! -d ~/.lumiCalc/brilconda ]; then
+        echo "!!! Cannot find brilcalc executables. Install it"
+        [ -f Brilconda-1.1.7-Linux-x86_64.sh ] || wget https://cern.ch/cmslumisw/installers/linux-64/Brilconda-1.1.7-Linux-x86_64.sh
+        sh Brilconda-1.1.7-Linux-x86_64.sh -p ~/.lumiCalc/brilconda
+        [ -f Brilconda-1.1.7-Linux-x86_64.sh ] && rm -f Brilconda-1.1.7-Linux-x86_64.sh
+    fi
+    if [ ! -d ~/.lumiCalc/normtag_file ]; then
+        echo "!!! Cannot find normtags. Copying files to ~/.lumiCalc"
+        [ -d ~/.lumiCalc ] || mkdir ~/.lumiCalc
+        scp -r lxplus.cern.ch:/afs/cern.ch/user/l/lumipro/public/normtag_file ~/.lumiCalc
+    fi
+    BRILPATH=~/.lumiCalc/brilconda/bin
+    TAGPATH=~/.lumiCalc/normtag_file
+    BRILOPTS="-c web"
+fi
 
 OPT=$1
 if [ $OPT == "normtag" ]; then
     echo -e "@@@ Normtags under $TAGPATH\n"
     ls $TAGPATH
     exit
-elif [ $OPT == "lumi" ]; then
-    if [ $# -lt 3 ]; then
+else
+    if [ $# -lt 2 ]; then
         echo "!!! Please provide NORMTAG and your lumi json file"
         exit 1
     fi
 
-    TAGFILE=$TAGPATH/$2
+    TAGFILE=$TAGPATH/$1
     if [ ! -f $TAGFILE ]; then
         echo "!!! Cannot find normtag file. Please check spelling"
         exit 3
     fi
-    LUMIFILE=$3
+    LUMIFILE=$2
     if [ ! -f $LUMIFILE ]; then
         echo "!!! Cannot find json file. Please check file path"
         exit 3
@@ -49,11 +67,8 @@ elif [ $OPT == "lumi" ]; then
 
     #echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
     #brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
-    echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
-    brilcalc lumi --normtag $TAGFILE -i $LUMIFILE
+    echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE $BRILOPTS
+    brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE $BRILOPTS
 
     exit
-else
-    echo "!!! First argument must be normtag or lumi"
-    exit 1
 fi
