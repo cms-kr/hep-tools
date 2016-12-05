@@ -1,11 +1,129 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-from Tkinter import *
+doGUI = True
+import BaseHTTPServer
+try:
+    from Tkinter import *
+except:
+    print "Cannot load Tkinter. fall back to http server"
+    doGUI = False
+
 import sys, os
 
 from CRABAPI.RawCommand import crabCommand
 
-class Line:
+##### For the crabmon with HTTP interface
+crabItems = {}
+commands = ("status", "resubmit", "finish")
+def run_command(cmd, crabdir):
+    if crabdir not in crabItems:
+        print "Cannot find crab dir", crabdir
+        return
+    if cmd not in commands:
+        print "Invalid command", cmd
+        return
+
+    if cmd == 'status':
+        res = crabCommand('status', dir = crabdir)
+        jobs = res['jobsPerStatus']
+
+        nSuccess, nFail, nJobs = 0, 0, 0
+        if 'finished' in jobs: nSuccess = jobs['finished']
+        if 'failed'   in jobs: nFail    = jobs['failed']
+        nJobs = len(res['jobList'])
+        crabItems[crabdir] = (nSuccess, nFail, nJobs)
+    elif cmd == 'resubmit':
+        crabCommand('resubmit', dir = crabdir)
+        run_command('status', crabdir)
+    elif cmd == 'finish':
+        crabCommand('report', dir = crabdir)
+        if not os.path.isdir('done'): os.mkdir('done')
+        os.system('mv %s done/' % crabdir)
+
+        crabItems[crabdir] = ()
+
+class CrabMonHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
+    def do_HEAD(s):
+        s.send_response(200)
+        s.send_header("Content-type", "text/html")
+        s.end_headers()
+
+    def do_GET(s):
+        s.send_response(200)
+        s.send_header("Content-type", "text/html")
+        s.end_headers()
+        s.wfile.write("""<html>
+<head>
+<title>Crab Monitor</title>
+<style>
+table th { text-align:left; color:white; background-color:black;}
+</style>
+<script>
+function disable_all() {
+    var inputs = document.getElementsByTagName('input');
+    console.log(inputs.Length);
+    for ( var i=0; i<inputs.Length; ++i ) {
+      console.log(i);
+      if ( inputs[i].type != 'submit' ) continue;
+      console.log('submit');
+      inputs[i].disabled = true;
+    }
+}
+</script>
+</head>
+<body>""")
+        s.wfile.write("<h1>Crab monitoring</h1>")
+
+        ## Parse requests
+        reqs = {}
+        if '?' not in s.path:
+            url = s.path
+        else:
+            url, rr = s.path.split('?', 1)
+            for r in rr.split('&'):
+                r = r.split('=',1)
+                if len(r) == 2: reqs[r[0]] = r[1]
+                else: reqs[r[0]] = ''
+        if '*' in reqs:
+            for item in crabItems:
+                run_command(reqs['*'], item)
+        else:
+            for req in reqs:
+                if req not in crabItems:
+                    print "Cannot find dir", req
+                    continue
+                cmd = reqs[req]
+                if cmd not in commands:
+                    print "Invalid command", cmd
+                    continue
+
+                run_command(cmd, req)
+
+        s.wfile.write('<form action="/">\n')
+        s.wfile.write("<table><tr><th>Name</th><th>nSuccess/nFail/nTotal</th><th>Actions</th></tr>\n")
+        for item in crabItems:
+            nSuccess, nFail, nTotal = crabItems[item]
+            s.wfile.write('<tr><td><!--<input type="checkbox" name="{0}" />-->{0}</td>'.format(item))
+            s.wfile.write("<td>%d/%d/%d</td><td>" % (nSuccess, nFail, nTotal))
+            if nSuccess == nTotal and nTotal > 0 and nFail == 0:
+                s.wfile.write('<input type="submit" name="%s" value="finish" onclick="disable_all();" />' % (item))
+            elif nSuccess == nTotal and nTotal > 0 and nFail == -1:
+                s.wfile.write('Finished')
+            else:
+                s.wfile.write('<input type="submit" name="%s" value="status" onclick="disable_all();"/>' % (item))
+                if nFail > 0:
+                    s.wfile.write('<input type="submit" name="%s" value="resubmit" onclick="disable_all();" />' % (item))
+            s.wfile.write('</td></tr>\n')
+        s.wfile.write('<tr><td colspan="3">')
+        s.wfile.write('<input type="submit" name="*" value="status" onclick="disable_all();"/>')
+        s.wfile.write('<input type="submit" name="*" value="resubmit" onclick="disable_all();"/></td></tr>')
+        s.wfile.write("</table>\n")
+        s.wfile.write("</form>\n")
+
+        s.wfile.write("</body></html>")
+
+## For the crabmon with Tkinter
+class CrabMonTkLine:
     def __init__(self, frame, name, size):
         nRow = size % 25 + 1
         nCol = (size / 25)*6
@@ -88,26 +206,49 @@ if __name__ == '__main__':
     ## Build GUI
     if not os.path.exists("done"):
         os.mkdir("done")
-    root = Tk()
 
-    lFrame = Frame(root)
-    size = 0
-    for d in sorted(os.listdir(".")):
-        if d[0] == '.': continue
-        if not os.path.isdir(d): continue
-        if ".requestcache" not in os.listdir(d): continue
+    if "--nogui" in sys.argv: doGUI = False
 
-        line = Line(lFrame, d, size)
-        objs.append(line)
-        size += 1
-    lFrame.pack()
+    if doGUI:
+        root = Tk()
 
-    dFrame = Frame(root)
-    allStatusBtn = Button(dFrame, text="status_all", command=status_all)
-    allResubmitBtn = Button(dFrame, text="resubmit_all", command=resubmit_all)
-    allStatusBtn.pack(side=RIGHT)
-    allResubmitBtn.pack(side=RIGHT)
-    dFrame.pack()
+        lFrame = Frame(root)
+        size = 0
+        for d in sorted(os.listdir(".")):
+            if d[0] == '.': continue
+            if not os.path.isdir(d): continue
+            if ".requestcache" not in os.listdir(d): continue
 
-    root.mainloop()
+            line = CrabMonTkLine(lFrame, d, size)
+            objs.append(line)
+            size += 1
+        lFrame.pack()
 
+        dFrame = Frame(root)
+        allStatusBtn = Button(dFrame, text="status_all", command=status_all)
+        allResubmitBtn = Button(dFrame, text="resubmit_all", command=resubmit_all)
+        allStatusBtn.pack(side=RIGHT)
+        allResubmitBtn.pack(side=RIGHT)
+        dFrame.pack()
+
+        root.mainloop()
+    else:
+        PORT = 20000
+
+        for d in os.listdir("."):
+            if not d.startswith("crab_"): continue
+            if not os.path.isdir(d): continue
+            if not os.path.exists(d+'/.requestcache'): continue
+
+            crabItems[d] = [-1,-1,-1]
+
+        print "Starting crabmon web GUI..."
+        print "open http://%s:%d with your web browser" % (os.environ["HOSTNAME"], PORT)
+        server = BaseHTTPServer.HTTPServer(("", PORT), CrabMonHTTP)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+
+        server.server_close()
+        print "Terminate by user"
