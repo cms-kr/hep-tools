@@ -243,8 +243,8 @@ if __name__ == '__main__':
             crabItems[d] = [-1,-1,-1]
 
         print "Starting crabmon web GUI..."
-        print "open http://%s:%d with your web browser" % (os.environ["HOSTNAME"], PORT)
         server = BaseHTTPServer.HTTPServer(("", PORT), CrabMonHTTP)
+        print "open http://%s:%d with your web browser" % (os.environ["HOSTNAME"], server.server_address[1])
         try:
             server.serve_forever()
         except KeyboardInterrupt:
