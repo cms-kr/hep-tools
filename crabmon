@@ -21,6 +21,7 @@ def log_status(dirName):
         l = l.strip()
         if 'Looking up detailed status of task ' not in l: continue
         jobstatus = logs[len(logs)-i].strip()
+        if not jobstatus.startswith('DEBUG'): continue
         jobstatus = eval('{'+jobstatus.split('{',1)[-1].strip())
         break
     if jobstatus == {}: return retVal
@@ -49,7 +50,7 @@ def run_command(cmd, crabdir):
         crabItems[crabdir] = log_status(crabdir)
 
     elif cmd == 'resubmit':
-        os.system('crab resubmit %s' % drabdir)
+        os.system('crab resubmit %s' % crabdir)
         run_command('status', crabdir)
     elif cmd == 'finish':
         os.system('crab report %s' % crabdir)
@@ -197,6 +198,7 @@ class CrabMonTkLine:
     def finish(self):
         if not os.path.exists("%s/.requestcache" % self.name): return
         os.system('crab report %s' % self.name)
+        if not os.path.isdir('done'): os.mkdir('done')
         os.system("mv %s done/" % self.name)
         self.statusBtn['state'] = 'disabled'
         self.resubmitBtn['state'] = 'disabled'
@@ -216,11 +218,18 @@ def resubmit_all():
         obj.resubmit()
 
 if __name__ == '__main__':
-    ## Build GUI
-    if not os.path.exists("done"):
-        os.mkdir("done")
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("-p", "--port", dest="port", type="int",
+                      help="port number", metavar="PORT", default=20000)
+    parser.add_option("-n", "--nogui", dest="nogui", action="store_true",
+                      default=False, help="do not use Tkinter GUI")
+    (options, args) = parser.parse_args()
+    options = options.__dict__
 
-    if "--nogui" in sys.argv: doGUI = False
+    ## Build GUI
+
+    if options["nogui"]: doGUI = False
 
     if doGUI:
         root = Tk()
@@ -246,7 +255,7 @@ if __name__ == '__main__':
 
         root.mainloop()
     else:
-        PORT = 20000
+        PORT = options["port"]
 
         for d in os.listdir("."):
             if not d.startswith("crab_"): continue
