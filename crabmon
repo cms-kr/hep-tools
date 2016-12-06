@@ -1,16 +1,37 @@
 #!/usr/bin/env python
 
 doGUI = True
+import sys, os
 import BaseHTTPServer
+
 try:
     from Tkinter import *
 except:
     print "Cannot load Tkinter. fall back to http server"
     doGUI = False
 
-import sys, os
+def log_status(dirName):
+    fName = dirName+"/crab.log"
+    retVal = (-1,-1,-1)
+    if not os.path.exists(fName): return retVal
 
-from CRABAPI.RawCommand import crabCommand
+    jobstatus = {}
+    logs = open(fName).readlines()
+    for i, l in enumerate(reversed(logs)):
+        l = l.strip()
+        if 'Looking up detailed status of task ' not in l: continue
+        jobstatus = logs[len(logs)-i].strip()
+        jobstatus = eval('{'+jobstatus.split('{',1)[-1].strip())
+        break
+    if jobstatus == {}: return retVal
+
+    jobsPerStat = jobstatus['jobsPerStatus']
+    nSuccess, nFail = 0,0
+    nTotal = sum([int(jobsPerStat[key]) for key in jobsPerStat.keys()])
+    if 'finished' in jobsPerStat: nSuccess = int(jobsPerStat['finished'])
+    if 'failed' in jobsPerStat: nFail = int(jobsPerStat['failed'])
+
+    return (nSuccess, nFail, nTotal)
 
 ##### For the crabmon with HTTP interface
 crabItems = {}
@@ -24,23 +45,18 @@ def run_command(cmd, crabdir):
         return
 
     if cmd == 'status':
-        res = crabCommand('status', dir = crabdir)
-        jobs = res['jobsPerStatus']
+        os.system('crab status %s' % crabdir)
+        crabItems[crabdir] = log_status(crabdir)
 
-        nSuccess, nFail, nJobs = 0, 0, 0
-        if 'finished' in jobs: nSuccess = jobs['finished']
-        if 'failed'   in jobs: nFail    = jobs['failed']
-        nJobs = len(res['jobList'])
-        crabItems[crabdir] = (nSuccess, nFail, nJobs)
     elif cmd == 'resubmit':
-        crabCommand('resubmit', dir = crabdir)
+        os.system('crab resubmit %s' % drabdir)
         run_command('status', crabdir)
     elif cmd == 'finish':
-        crabCommand('report', dir = crabdir)
+        os.system('crab report %s' % crabdir)
         if not os.path.isdir('done'): os.mkdir('done')
         os.system('mv %s done/' % crabdir)
 
-        crabItems[crabdir] = ()
+        del crabItems[crabdir]
 
 class CrabMonHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_HEAD(s):
@@ -74,7 +90,7 @@ function disable_all() {
 <body>""")
         s.wfile.write("<h1>Crab monitoring</h1>")
 
-        ## Parse requests
+        ## Parse and run requests
         reqs = {}
         if '?' not in s.path:
             url = s.path
@@ -98,10 +114,12 @@ function disable_all() {
                     continue
 
                 run_command(cmd, req)
+        print "@@@ Done"
 
         s.wfile.write('<form action="/">\n')
         s.wfile.write("<table><tr><th>Name</th><th>nSuccess/nFail/nTotal</th><th>Actions</th></tr>\n")
-        for item in crabItems:
+        for item in sorted(crabItems.keys()):
+            crabItems[item] = log_status(item)
             nSuccess, nFail, nTotal = crabItems[item]
             s.wfile.write('<tr><td><!--<input type="checkbox" name="{0}" />-->{0}</td>'.format(item))
             s.wfile.write("<td>%d/%d/%d</td><td>" % (nSuccess, nFail, nTotal))
@@ -146,13 +164,8 @@ class CrabMonTkLine:
     def status(self):
         if not os.path.exists("%s/.requestcache" % self.name): return
         print "@ checking status", self.name
-        res = crabCommand('status', dir = self.name)
-        jobs = res['jobsPerStatus']
-
-        nSuccess, nFail, nJobs = 0, 0, 0
-        if 'finished' in jobs: nSuccess = jobs['finished']
-        if 'failed'   in jobs: nFail    = jobs['failed']
-        nJobs = len(res['jobList'])
+        os.system('crab status %s' % self.name)
+        nSuccess, nFail, nJobs = log_status(self.name)
         self.statLabel.configure(text="%d/%d/%d" % (nSuccess, nFail, nJobs))
 
         if nSuccess > 0:
@@ -177,13 +190,13 @@ class CrabMonTkLine:
     def resubmit(self):
         if not os.path.exists("%s/.requestcache" % self.name): return
         self.resubmitBtn['state'] = 'disabled'
-        crabCommand('resubmit', dir=self.name)
+        os.system('crab resubmit %s' % self.name)
         self.status()
         print "@ resubmit(%s) done" % self.name
 
     def finish(self):
         if not os.path.exists("%s/.requestcache" % self.name): return
-        crabCommand('report', dir=self.name)
+        os.system('crab report %s' % self.name)
         os.system("mv %s done/" % self.name)
         self.statusBtn['state'] = 'disabled'
         self.resubmitBtn['state'] = 'disabled'
