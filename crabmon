@@ -3,6 +3,7 @@
 doGUI = True
 import sys, os
 import BaseHTTPServer
+import urlparse
 
 try:
     from Tkinter import *
@@ -60,15 +61,11 @@ def run_command(cmd, crabdir):
         del crabItems[crabdir]
 
 class CrabMonHTTP(BaseHTTPServer.BaseHTTPRequestHandler):
-    def do_HEAD(s):
+    def html_header(s):
         s.send_response(200)
         s.send_header("Content-type", "text/html")
         s.end_headers()
 
-    def do_GET(s):
-        s.send_response(200)
-        s.send_header("Content-type", "text/html")
-        s.end_headers()
         s.wfile.write("""<html>
 <head>
 <title>Crab Monitor</title>
@@ -91,33 +88,11 @@ function disable_all() {
 <body>""")
         s.wfile.write("<h1>Crab monitoring</h1>")
 
-        ## Parse and run requests
-        reqs = {}
-        if '?' not in s.path:
-            url = s.path
-        else:
-            url, rr = s.path.split('?', 1)
-            for r in rr.split('&'):
-                r = r.split('=',1)
-                if len(r) == 2: reqs[r[0]] = r[1]
-                else: reqs[r[0]] = ''
-        if '*' in reqs:
-            for item in crabItems:
-                run_command(reqs['*'], item)
-        else:
-            for req in reqs:
-                if req not in crabItems:
-                    print "Cannot find dir", req
-                    continue
-                cmd = reqs[req]
-                if cmd not in commands:
-                    print "Invalid command", cmd
-                    continue
+    def html_footer(s):
+        s.wfile.write("</body></html>")
 
-                run_command(cmd, req)
-        print "@@@ Done"
-
-        s.wfile.write('<form action="/">\n')
+    def html_showtable(s):
+        s.wfile.write('<form action="/" method="post">\n')
         s.wfile.write("<table><tr><th>Name</th><th>nSuccess/nFail/nTotal</th><th>Actions</th></tr>\n")
         for item in sorted(crabItems.keys()):
             crabItems[item] = log_status(item)
@@ -139,7 +114,48 @@ function disable_all() {
         s.wfile.write("</table>\n")
         s.wfile.write("</form>\n")
 
-        s.wfile.write("</body></html>")
+    def do_HEAD(s):
+        s.send_response(200)
+        s.send_header("Content-type", "text/html")
+        s.end_headers()
+
+    def do_POST(s):
+        len = int(s.headers['Content-Length'])
+        data = urlparse.parse_qs(s.rfile.read(len).decode('utf-8'))
+        reqs = {}
+        for key, val in data.iteritems(): reqs[key] = val[0]
+
+        if '*' in reqs:
+            cmd = str(reqs['*'])
+            print "Run", reqs['*'], "for all subdirs"
+            for item in crabItems:
+                run_command(reqs['*'], item)
+        else:
+            print "Run one by one"
+            for req in reqs:
+                req = str(req)
+                print req, reqs[req]
+                if req not in crabItems:
+                    print "Cannot find dir", req
+                    continue
+                cmd = str(reqs[req])
+                if cmd not in commands:
+                    print "Invalid command", cmd
+                    continue
+
+                print cmd, req
+                run_command(cmd, req)
+
+        s.html_header()
+        s.html_showtable()
+        s.html_footer()
+        print "@@@ Done"
+
+    def do_GET(s):
+        s.html_header()
+        s.html_showtable()
+        s.html_footer()
+        print "@@@ page done"
 
 ## For the crabmon with Tkinter
 class CrabMonTkLine:
