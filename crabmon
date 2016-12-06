@@ -221,7 +221,7 @@ if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option("-p", "--port", dest="port", type="int",
-                      help="port number", metavar="PORT", default=20000)
+                      help="port number", metavar="PORT", default=49152)
     parser.add_option("-n", "--nogui", dest="nogui", action="store_true",
                       default=False, help="do not use Tkinter GUI")
     (options, args) = parser.parse_args()
