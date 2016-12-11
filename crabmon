@@ -99,6 +99,7 @@ function disable_all() {
 </head>
 <body>""")
         s.wfile.write('<h1><a href="/">Crab monitoring</a></h1>')
+        s.wfile.write('<p>from working directory %s</p>' % os.environ['PWD'])
 
     def html_footer(s):
         s.wfile.write("</body></html>")
