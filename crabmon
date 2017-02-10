@@ -300,6 +300,8 @@ if __name__ == '__main__':
         print "Starting crabmon web GUI..."
         server = BaseHTTPServer.HTTPServer(("", PORT), CrabMonHTTP)
         print "open http://%s:%d with your web browser" % (os.environ["HOSTNAME"], server.server_address[1])
+        print " if you have a firewall problem, use ssh tunnel:"
+        print " ex) ssh %s -D10000\n     and configure your web browser to use SOCKS proxy 127.0.0.1:10000" % os.environ["HOSTNAME"]
         try:
             server.serve_forever()
         except KeyboardInterrupt:
