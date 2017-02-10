@@ -31,6 +31,8 @@ def usage():
     print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
     print "   --args                           general arguments"
     print "   --firstRun N                     For MC: run number"
+    print "  Optional, condor-specific :"
+    print "   --blacklist HOST1,HOST2,...      Remove specific hosts"
     sys.exit()
 
 # Parse arguments
@@ -38,7 +40,8 @@ if len(sys.argv) < 2: usage()
 try:
     opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
                                              'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
-                                             'args=', 'secondFileList=', 'customise=', 'firstRun=',])
+                                             'args=', 'secondFileList=', 'customise=', 'firstRun=',
+                                             'blacklist=',])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -55,6 +58,7 @@ class TheJobConfig():
         self.doSubmit = True
         self.maxEvent = -1
         self.additional_options=""
+        self.blacklist = []
         hostName = os.environ['HOSTNAME']
         if hostName.startswith("lxplus") or hostName.endswith("cern.ch"):
             self.site = "CERN"
@@ -172,6 +176,8 @@ class TheJobConfig():
         if '-n' in opts: self.doSubmit = False
         if '-g' in opts: self.doGrid   = True
         if '--queue' in opts: queue = opts['--queue']
+        if '--blacklist' in opts:
+            self.blacklist = opts['--blacklist'].split(',')
 
         ## Load customisation if given
         self.customise = None
@@ -303,7 +309,7 @@ class TheJobConfig():
 
         ## Write run script
         print "@@ Writing run script..."
-        runFileName = "%s/run.sh" % self.jobDir
+        runFileName = "%s/run_%s.sh" % (self.jobDir, self.jobName.replace('/','_'))
         fout = open(runFileName, "w")
 
         print>>fout, """#!/bin/bash
@@ -373,14 +379,14 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         fout = open(submitFileName, "w")
         print>>fout, "#!/bin/bash"
         for section in range(self.nSection):
-            print>>fout, "{0} -J {1}.{2} -oo {3}/job_{2:03d}.log run.sh {2}".format(self.submitCmd, self.jobName, section, self.jobDir)
+            print>>fout, "{0} -J {1}.{2} -oo {3}/job_{2:03d}.log run_{4}.sh {2}".format(self.submitCmd, self.jobName, section, self.jobDir, self.jobName.replace('/','_'))
         fout = None
         os.chmod(submitFileName, 0755)
 
     def makePBSJob(self):
         ## Write run script
         print "@@ Writing run script..."
-        runFileName = "%s/run.sh" % self.jobDir
+        runFileName = "%s/run_%s.sh" % (self.jobDir, self.jobName.replace('/','_'))
         fout = open(runFileName, "w")
 
         print>>fout, """#!/bin/bash
@@ -464,14 +470,14 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         fout = open(submitFileName, "w")
         print>>fout, "#!/bin/bash"
         for section in range(self.nSection):
-            print>>fout, "{0} {1}_{2} run.sh -vSECTION={2}".format(self.submitCmd, self.jobName, section)
+            print>>fout, "{0} {1}_{2} run_{3}.sh -vSECTION={2}".format(self.submitCmd, self.jobName, section, self.jobName.replace('/','_'))
         fout = None
         os.chmod(submitFileName, 0755)
 
     def makeCondorJob(self):
         ## Write run script
         print "@@ Writing run script..."
-        runFileName = "%s/run.sh" % self.jobDir
+        runFileName = "%s/run_%s.sh" % (self.jobDir, self.jobName.replace('/','_'))
         fout = open(runFileName, "w")
 
         print>>fout, """#!/bin/bash
@@ -548,10 +554,9 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         # Condor jobs
         jdlOut = open("%s/submit.jds" % self.jobDir, "w")
         print>>jdlOut, "# Job description file for condor job", self.jobName
-        print>>jdlOut, """executable = run.sh
+        print>>jdlOut, """executable = run_%s.sh
 universe   = vanilla
 arguments  = $(Process)
-requirements = OpSysMajorVer == 6
 
 log = condor.log
 
@@ -560,12 +565,15 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 output = job_$(Process).log
 error = job_$(Process).err
-transfer_input_files = job.tar.gz"""
+transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
         if self.transferCmd == '':
             print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
             remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
             print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
         print>>jdlOut, "queue",  self.nSection
+        requirements = ["OpSysMajorVer == 6"]
+        if len(self.blacklist) > 0: requirements.append("Machine != "+x for x in self.blacklist)
+        print>>jdlOut, "&&".join(requirements)
         jdlOut = None
 
     def archive(self):

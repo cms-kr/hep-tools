@@ -1,0 +1,52 @@
+#!/bin/bash
+
+[ -d /tmp/USER/probeJob ] && rm -rf /tmp/$USER/probeJob
+mkdir -p /tmp/$USER/probeJob
+cd /tmp/$USER/probeJob
+
+cat > probe.sh <<EOF
+#!/bin/bash
+
+sleep 120
+
+tar xzf job.tar.gz
+
+echo ARG1=\"\$1\" >> test.txt
+echo ARG2=\"\$2\" >> test.txt
+hostname >> test.txt
+uname -a >> test.txt
+echo ----------- >> test.txt
+[ -d /cms/scratch/\$2 ] || echo "FAIL \`hostname\` to open /cms/scratch/\$2" >> test.txt
+[ -f /cvmfs/cms.cern.ch/cmsset_default.sh ] || echo "FAIL \`hostname\` to open /cvmfs/cms.cern.ch/cmsset_default.sh" >> test.txt
+[ -d /xrootd/store/user/\$2 ] || echo "FAIL \`hostname\` to open /xrootd/store/user/\$2" >> test.txt
+[ -d /xrootd/store/group/CAT ] || echo "FAIL \`hostname\` to open /xrootd/store/group/CAT" >> test.txt
+touch /xrootd/store/user/\$2/probeJob_\$1 || echo "FAIL \`hostname\` to write /xrootd/store/user/\$2/probeJob_\$1
+rm -f /xrootd/store/user/\$2/probeJob_\$1 || echo "FAIL \`hostname\` to remove /xrootd/store/user/\$2/probeJob_\$1
+EOF
+chmod +x probe.sh
+
+touch testFile
+tar czf job.tar.gz testFile
+rm -f testFile
+
+cat > submit.jds <<EOF
+# Job description file for condor job
+executable = probe.sh
+universe   = vanilla
+arguments  = \$(Process) $USER
+requirements = OpSysMajorVer == 6
+
+log = condor.log
+
+getenv     = True
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+output = job_\$(Process).log
+error = job_\$(Process).err
+transfer_input_files = job.tar.gz
+transfer_output_files = test.txt
+transfer_output_remaps = "test.txt=test_\$(Process).txt"
+queue 2048
+EOF
+
+condor_submit submit.jds
