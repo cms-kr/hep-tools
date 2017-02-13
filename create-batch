@@ -573,7 +573,7 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
         print>>jdlOut, "queue",  self.nSection
         requirements = ["OpSysMajorVer == 6"]
         if len(self.blacklist) > 0: requirements.extend(["Machine != "+x for x in self.blacklist])
-        print>>jdlOut, ("&&".join(requirements))
+        print>>jdlOut, "requirements = ", (" && ".join(requirements))
         jdlOut = None
 
     def archive(self):
