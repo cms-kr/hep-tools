@@ -1,0 +1,24 @@
+#!/bin/bash
+
+MAXJOBS=2000
+WAITTIME=30
+
+for i in `find . -name '.create-batch'`; do
+    DIR=`dirname $i`
+    echo Submitting jobs in $DIR
+    [ -f $DIR/condor.log ] && echo "Already submitted. Skip this directory" && continue
+    [ ! -f $DIR/job.tar.gz -o ! -f $DIR/submit.sh ] && echo "Cannot find job archive" && continue
+
+    pushd $DIR
+    while true; do
+        NJOBS=`condor_q | tail -1 | awk '{if ($1+0!=$1) print 10000; else print $1}'`
+        if [ $NJOBS -gt $MAXJOBS ]; then
+            echo "$NJOBS in queue. Wait for $WAITTIME sec. Jobs will be submitted if nJobs < $MAXJOBS"
+            sleep $WAITTIME
+            continue
+        fi
+        ./submit.sh
+        break
+    done
+    popd
+done
