@@ -34,6 +34,6 @@ if __name__ == '__main__':
     inFileNames = sys.argv[2:]
 
     if len(inFileNames) == 1:
-        os.system("mv %s_0.root %s" % (outFilePrefix, inFileNames[0]))
+        os.system("mv %s %s_0.root" % (inFileNames[0], outFilePrefix))
     else:
         haddsplit(outFilePrefix, inFileNames)
