@@ -292,14 +292,6 @@ class TheJobConfig():
                     getattr(process.RandomNumberGeneratorService, p).initialSeed = section+1000+shift+1000*self.firstRun
                 open(cfgFileName, "w").write(process.dumpPython())
 
-        ## Checking voms proxy
-        if self.doGrid:
-            print "@@ Checking grid certificate to access files..."
-            if os.system("voms-proxy-info -exists --valid 8:00") != 0:
-                os.system("voms-proxy-init -voms cms --valid 144:00")
-            uid = os.getuid()
-            shutil.copy2("/tmp/x509up_u%d" % uid, "%s/x509up_u%d" % (self.jobDir, uid))
-
         ## Make scripts
         if   self.scheduler == "LSB": self.makeLSBJob()
         elif self.scheduler == "PBS": self.makePBSJob()
@@ -328,6 +320,9 @@ tar xzf {0}/job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
+if [ -f $CMSSW_BASE/proxy.x509 ]; then
+    export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
+fi
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 echo cmsRun job_${{SECTION}}_cfg.py {3}
 time cmsRun job_${{SECTION}}_cfg.py {3}
@@ -363,10 +358,6 @@ done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
-
-        if jobConfig.doGrid:
-            uid = os.getuid()
-            print>>fout, "cp -f x509up_u%d /tmp/" % (uid)
 
         ## Write submit script
         fout = open("%s/submit.log" % self.jobDir, "w")
@@ -410,23 +401,11 @@ mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 tar xzf {0}/job.tar.gz
 cd {1}
-PROXY_CA=/tmp/${{USER}}/PBS_${{PBS_JOBID}}/{1}/x509up_u`id -u`
-echo ${{PROXY_CA}}
-voms-proxy-info -exists --valid 8:00
-TIMEVALID=$?
-if [ -f ${{PROXY_CA}} ] && [ ${{TIMEVALID}} -eq 1 ]; then
-  echo "copy proxy ca to /tmp" 
-  cp -f ${{PROXY_CA}} /tmp
-else
-  if [ ! -f ${{PROXY_CA}} ]; then
-    echo "Can not find proxy CA"
-  fi
-  if [ ${{TIMEVALID}} -eq 1 ]; then
-    echo "Sufficient valid time"
-  fi
-fi 
 scram build ProjectRename
 eval `scram runtime -sh`
+if [ -f $CMSSW_BASE/proxy.x509 ]; then
+    export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
+fi
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
 time cmsRun job_${{SECTION}}_cfg.py {3}
 EXITCODE=$?
@@ -495,13 +474,12 @@ fi
 hostname
 tar xzf job.tar.gz
 cd {1}""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
-        if (self.doGrid) :
-          print>>fout,"""
-cp x509up_u`id -u` /tmp/x509up_u`id -u`"""
-
         print>>fout,"""
 scram build ProjectRename
 eval `scram runtime -sh`
+if [ -f $CMSSW_BASE/proxy.x509 ]; then
+    export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
+fi
 echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
 ls -al
 time cmsRun job_${{SECTION}}_cfg.py {3}
@@ -590,6 +568,15 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
                  + exclCommon + " --exclude-tag-all=.create-batch ")
         os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude=*.root")
+
+        ## Checking voms proxy
+        if self.doGrid:
+            print "@@ Checking grid certificate to access files..."
+            if os.system("voms-proxy-info -exists --valid 8:00") != 0:
+                os.system("voms-proxy-init -voms cms --valid 144:00")
+            uid = os.getuid()
+            os.system("tar rf {0}/job.tar {1} --xform='s:{1}:{2}/proxy.x509:' -P ".format(self.jobDir, "/tmp/x509up_u%d" % uid, os.path.basename(self.cmsswBase)))
+
         os.system("gzip %s/job.tar" % self.jobDir)
         #os.system("rm -f %s/job_*_cfg.py" % self.jobDir)
 
