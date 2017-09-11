@@ -6,7 +6,7 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-BRILOPTS=""
+BRILOPTS="-u /pb"
 if [ -d /afs/cern.ch/cms -a -d /afs/cern.ch/user ]; then
     BRILPATH=/afs/cern.ch/cms/lumi/brilconda-1.1.7/bin
     TAGPATH=/afs/cern.ch/user/l/lumipro/public/Normtags
@@ -24,10 +24,10 @@ else
     fi
     BRILPATH=~/.lumiCalc/brilconda/bin
     TAGPATH=~/.lumiCalc/Normtags
-    BRILOPTS="-c web"
+    BRILOPTS="$BRILOPTS -c web"
 
     if [ -f /cvmfs/cms.cern.ch/SITECONF/local/JobConfig/site-local-config.xml ]; then
-        BRILOPTS="-c /cvmfs/cms.cern.ch/SITECONF/local/JobConfig/site-local-config.xml"
+        BRILOPTS="$BRILOPTS -c /cvmfs/cms.cern.ch/SITECONF/local/JobConfig/site-local-config.xml"
     fi
 fi
 
@@ -42,16 +42,8 @@ else
         exit 1
     fi
 
-    if [ -f $1 ]; then
-        TAGFILE=$1
-    else
-        TAGFILE=$TAGPATH/$1
-        if [ ! -f $TAGFILE ]; then
-            echo "!!! Cannot find normtag file. Please check spelling"
-            echo $TAGPATH $1
-            exit 3
-        fi
-    fi
+    TAGFILE=$1
+    [ -f $1 ] || TAGFILE=$TAGPATH/$TAGFILE
     LUMIFILE=$2
     if [ ! -f $LUMIFILE ]; then
         echo "!!! Cannot find json file. Please check file path"
@@ -74,10 +66,15 @@ else
     fi
     echo "Running brilcalc"
 
-    #echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
-    #brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE
-    echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE $BRILOPTS
-    brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE $BRILOPTS
+    if [ -f $TAGFILE ]; then
+        echo brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE $BRILOPTS
+        brilcalc lumi -b "STABLE BEAMS" --normtag $TAGFILE -i $LUMIFILE $BRILOPTS
+    else
+        echo "!!! Cannot find normtag file. Please check spelling"
+        echo "!!! Computing lumi without normtag file"
+        echo brilcalc lumi -b "STABLE BEAMS" -i $LUMIFILE $BRILOPTS
+        brilcalc lumi -b "STABLE BEAMS" -i $LUMIFILE $BRILOPTS
+    fi
 
     exit
 fi
