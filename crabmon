@@ -205,7 +205,7 @@ class CrabMonTkLine:
 
         if nSuccess > 0:
             self.getBtn['state'] = 'normal'
-        if nSuccess == nJobs:
+        if nSuccess > 0 and nSuccess == nJobs:
             self.finishBtn['state'] = 'normal'
         if nFail > 0:
             self.resubmitBtn['state'] = 'normal'
