@@ -38,7 +38,7 @@ def log_status(dirName):
     for jobIdx, status in jobstatus.iteritems():
         state = status['State']
         if state == 'finished': nSuccess += 1
-        elif state == 'failed': nSuccess += 1
+        elif state == 'failed': nFail += 1
 
     return (nSuccess, nFail, nTotal)
 
