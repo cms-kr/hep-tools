@@ -6,18 +6,18 @@ shift
 
 NFILE=25
 
-NCPU=`cat /proc/cpuinfo | grep processor | wc -l`
+NCPU=$(nproc)
 FOUTSUB=`echo $@ | xargs -n$NFILE | awk '{print "'${FOUT//.root}'_"NR".root"}'`
 
-echo $@ | xargs -n$NFILE | awk '{print "'${FOUT//.root}'_"NR".root "$0}' | xargs -L1 -P$NCPU -exec 'hadd'
+echo $@ | xargs -n$NFILE | awk '{print "-fk '${FOUT//.root}'_"NR".root "$0}' | xargs -L1 -P$NCPU -exec 'hadd'
 EXTCODE=$?
 [ $EXTCODE -eq 0 ] || exit $EXTCODE
 
 if [ $(echo $FOUTSUB | wc -w) -le $NFILE ]; then
-  hadd -f $FOUT $FOUTSUB && rm -f $FOUTSUB
+  hadd -fk $FOUT $FOUTSUB && rm -f $FOUTSUB
 else
   FOUTSUB2=`echo $FOUTSUB | xargs -n$NFILE | awk '{print "'${FOUT//.root}'__"NR".root"}'`
-  echo $FOUTSUB | xargs -n$NFILE | awk '{print "'${FOUT//.root}'__"NR".root "$0}' | xargs -L1 -P$NCPU -exec 'hadd'
-  hadd -f $FOUT $FOUTSUB2 && rm -f $FOUTSUB $FOUTSUB2
+  echo $FOUTSUB | xargs -n$NFILE | awk '{print "-fk '${FOUT//.root}'__"NR".root "$0}' | xargs -L1 -P$NCPU -exec 'hadd'
+  hadd -fk $FOUT $FOUTSUB2 && rm -f $FOUTSUB $FOUTSUB2
 fi
 
