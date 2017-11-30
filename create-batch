@@ -287,7 +287,7 @@ class TheJobConfig():
                 cPickle.dump(process, open(pklFileName, "w"))
                 open(cfgFileName, "w").write("""#!/usr/bin/env python
 import cPickle
-cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
+process = cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
         else:
             for section in range(self.nSection):
                 cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
@@ -299,7 +299,7 @@ cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
                 cPickle.dump(process, open(pklFileName, "w"))
                 open(cfgFileName, "w").write("""#!/usr/bin/env python
 import cPickle
-cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
+process = cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
 
         ## Make scripts
         if   self.scheduler == "LSB": self.makeLSBJob()
