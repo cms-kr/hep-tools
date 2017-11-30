@@ -11,6 +11,7 @@ from getopt import gnu_getopt as getopt
 from math import ceil
 from datetime import datetime
 import imp
+import cPickle
 
 def usage():
     print sys.argv[0], " : create pbs jobs"
@@ -282,15 +283,23 @@ class TheJobConfig():
                     process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
 
                 cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
-                open(cfgFileName, "w").write(process.dumpPython())
+                pklFileName = "%s/job_%03d_cfg.pkl" % (self.jobDir, section)
+                cPickle.dump(process, open(pklFileName, "w"))
+                open(cfgFileName, "w").write("""#!/usr/bin/env python
+import cPickle
+process = cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
         else:
             for section in range(self.nSection):
                 cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
+                pklFileName = "%s/job_%03d_cfg.pkl" % (self.jobDir, section)
                 process.source.firstRun = cms.untracked.uint32(self.firstRun)
                 process.source.firstLuminosityBlock = cms.untracked.uint32(section+1)
                 for shift, p in enumerate(process.RandomNumberGeneratorService.parameterNames_()):
                     getattr(process.RandomNumberGeneratorService, p).initialSeed = section+1000+shift+1000*self.firstRun
-                open(cfgFileName, "w").write(process.dumpPython())
+                cPickle.dump(process, open(pklFileName, "w"))
+                open(cfgFileName, "w").write("""#!/usr/bin/env python
+import cPickle
+process = cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
 
         ## Make scripts
         if   self.scheduler == "LSB": self.makeLSBJob()
