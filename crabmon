@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6
 
 doGUI = True
 import sys, os
@@ -231,7 +231,7 @@ class CrabMonTkLine:
 
     def finish(self):
         if not os.path.exists("%s/.requestcache" % self.name): return
-        run_command('report', self.name)
+        run_command('finish', self.name)
         if not os.path.isdir('done'): os.mkdir('done')
         os.system("mv %s done/" % self.name)
         self.statusBtn['state'] = 'disabled'
