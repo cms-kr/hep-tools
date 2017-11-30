@@ -265,12 +265,20 @@ if __name__ == '__main__':
 
     if options["nogui"]: doGUI = False
 
-    for d in sorted(os.listdir(".")):
-        if not d.startswith("crab_"): continue
-        if not os.path.isdir(d): continue
-        if not os.path.exists(d+"/.requestcache"): continue
+    if len(args) == 0:
+        for d in sorted(os.listdir(".")):
+            if not d.startswith("crab_"): continue
+            if not os.path.isdir(d): continue
+            if not os.path.exists(d+"/.requestcache"): continue
 
-        crabItems[d] = [-1,-1,-1]
+            crabItems[d] = [-1,-1,-1]
+    else:
+        for d in args:
+            if not d.startswith("crab_"): continue
+            if not os.path.isdir(d): continue
+            if not os.path.exists(d+"/.requestcache"): continue
+
+            crabItems[d] = [-1,-1,-1]
 
     if doGUI:
         root = Tk()
