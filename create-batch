@@ -34,6 +34,7 @@ def usage():
     print "   --firstRun N                     For MC: run number"
     print "  Optional, condor-specific :"
     print "   --blacklist HOST1,HOST2,...      Remove specific hosts"
+    print "   --whitelist HOST1,HOST2,...      Remove specific hosts"
     sys.exit()
 
 # Parse arguments
@@ -42,7 +43,7 @@ try:
     opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
                                              'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
                                              'args=', 'secondFileList=', 'customise=', 'firstRun=',
-                                             'blacklist=',])
+                                             'blacklist=','whitelist='])
     opts = dict(opts)
 except:
     print "!!! Error parsing arguments"
@@ -60,6 +61,7 @@ class TheJobConfig():
         self.maxEvent = -1
         self.additional_options=""
         self.blacklist = []
+        self.whitelist = []
         hostName = os.environ['HOSTNAME']
         if hostName.startswith("lxplus") or hostName.endswith("cern.ch"):
             self.site = "CERN"
@@ -179,6 +181,8 @@ class TheJobConfig():
         if '--queue' in opts: queue = opts['--queue']
         if '--blacklist' in opts:
             self.blacklist = opts['--blacklist'].split(',')
+        if '--whitelist' in opts:
+            self.whitelist = opts['--whitelist'].split(',')
 
         ## Load customisation if given
         self.customise = None
@@ -558,8 +562,11 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
             remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
             print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
         requirements = ["OpSysMajorVer == 6"]
-        if len(self.blacklist) > 0: requirements.extend(["Machine != "+x for x in self.blacklist])
+        white_requirements = []
+        if len(self.blacklist) > 0: requirements.extend(["Machine != \""+x+"\"" for x in self.blacklist])
+        if len(self.whitelist) > 0: white_requirements.extend(["Machine =?= \""+x+"\"" for x in self.whitelist])
         print>>jdlOut, "requirements = ", (" && ".join(requirements))
+        print>>jdlOut, " ", (" || ".join(white_requirements))
         print>>jdlOut, "queue",  self.nSection
         jdlOut = None
 
