@@ -561,14 +561,15 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
             print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
             remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
             print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
-        requirements = ["OpSysMajorVer == 6"]
-        white_requirements = []
-        if len(self.blacklist) > 0: requirements.extend(["Machine != \""+x+"\"" for x in self.blacklist])
-        req = "requirements = ", (" && ".join(requirements))
+        requirements = []
+        if len(self.blacklist) > 0:
+            requirements.extend(["Machine != \""+x+"\"" for x in self.blacklist])
         if len(self.whitelist) > 0: 
-            white_requirements.extend(["Machine == \""+x+"\"" for x in self.whitelist])
-            req += "&&","(", (" || ".join(white_requirements)),")"
-        print>>jdlOut, " ".join(req)
+            white_requirements = ["Machine == \""+x+"\"" for x in self.whitelist]
+            requirements.append("(%s)" % (" || ".join(white_requirements)))
+        if len(requirements) > 0:
+            req = "requirements = ", (" && ".join(requirements))
+            print>>jdlOut, " ".join(req)
         print>>jdlOut, "queue",  self.nSection
         jdlOut = None
 
