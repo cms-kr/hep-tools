@@ -286,7 +286,7 @@ class TheJobConfig():
                 cfgOut = open(cfgFileName, "w")
                 print>>cfgOut, """#!/usr/bin/env python
 import cPickle
-process = cPickle.load(open("%s")) """ % (pklFileName)
+process = cPickle.load(open("%s")) """ % ("job_cfg.pkl")
                 
                 print>>cfgOut, """process.source.fileNames = %s """ % (self.files[begin:end])
                 ## Add secondary files if requested                
