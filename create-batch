@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os
+import sys, os, re
 # Check necessary envvars
 if 'CMSSW_VERSION' not in os.environ:
     print "ERROR: You have to set up CMSSW. Run cmsenv in your working directory."
@@ -267,44 +267,50 @@ class TheJobConfig():
             outFileModes[modName] = getattr(process, modName).fileName.value()
 
         for f in outFileModes.values():
+            f = re.sub(r'^file:', '', f)            
             self.outFileNames.append(f)
-
+            
+        pklFileName = "%s/job_cfg.pkl" % (self.jobDir)
+        cPickle.dump(process, open(pklFileName, "w"))
+        
         ## Split files into jobs and write python cfg
         print "@@ Splitting jobs..."
         if hasattr(self, 'files'):
             nFiles = len(self.files)
             self.nSection = int(ceil(1.0*nFiles/self.maxFiles))
-            for section in range(self.nSection):
+            for section in range(self.nSection):                
                 begin = section*self.maxFiles
                 end = min(begin+self.maxFiles, nFiles)
 
-                process.source.fileNames = self.files[begin:end]
+                cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
+                cfgOut = open(cfgFileName, "w")
+                print>>cfgOut, """#!/usr/bin/env python
+import cPickle
+process = cPickle.load(open("%s")) """ % ("job_cfg.pkl")
+                
+                print>>cfgOut, """process.source.fileNames = %s """ % (self.files[begin:end])
+                ## Add secondary files if requested                
+                if len(self.secondFiles) > 0:
+                    print>>cfgOut, """process.source.secondaryFileNames = cms.untracked.vstring(%s)""" % (self.secondFiles[:])
+                #process.source.fileNames = self.files[begin:end]
                 #for modName in outFileModes:
                 #    getattr(process, modName).fileName = "%s_%03d.root" % (outFileModes[modName][:-5], section)
 
-                ## Add secondary files if requested
-                if len(self.secondFiles) > 0:
-                    process.source.secondaryFileNames = cms.untracked.vstring(self.secondFiles[:])
-
-                cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
-                pklFileName = "%s/job_%03d_cfg.pkl" % (self.jobDir, section)
-                cPickle.dump(process, open(pklFileName, "w"))
-                open(cfgFileName, "w").write("""#!/usr/bin/env python
-import cPickle
-process = cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
         else:
             for section in range(self.nSection):
                 cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
-                pklFileName = "%s/job_%03d_cfg.pkl" % (self.jobDir, section)
-                process.source.firstRun = cms.untracked.uint32(self.firstRun)
-                process.source.firstLuminosityBlock = cms.untracked.uint32(section+1)
-                for shift, p in enumerate(process.RandomNumberGeneratorService.parameterNames_()):
-                    getattr(process.RandomNumberGeneratorService, p).initialSeed = section+1000+shift+1000*self.firstRun
-                cPickle.dump(process, open(pklFileName, "w"))
-                open(cfgFileName, "w").write("""#!/usr/bin/env python
+                cfgOut = open(cfgFileName, "w")
+                print>>cfgOut, """#!/usr/bin/env python
+import FWCore.ParameterSet.Config as cms
 import cPickle
-process = cPickle.load(open("%s"))""" % os.path.basename(pklFileName))
-
+process = cPickle.load(open("%s")) """ % (pklFileName)
+                
+                print>>cfgOut, """process.source.firstRun = cms.untracked.uint32(%s)""" % (self.firstRun)
+                print>>cfgOut, """process.source.firstLuminosityBlock = cms.untracked.uint32(%s)""" % (section+1)
+                
+                for shift, p in enumerate(process.RandomNumberGeneratorService.parameterNames_()):
+                    print>>cfgOut, """process.RandomNumberGeneratorService.%s.initialSeed = %s""" % (p,section+1000+shift+1000*self.firstRun)
+                    
         ## Make scripts
         if   self.scheduler == "LSB": self.makeLSBJob()
         elif self.scheduler == "PBS": self.makePBSJob()
