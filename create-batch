@@ -70,7 +70,7 @@ class TheJobConfig():
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
             self.scheduler = "CONDOR"
-            opts['-g'] = True ## Enforce to carry grid certificate
+            #opts['-g'] = True ## Enforce to carry grid certificate
             #queue = "batch"
         elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
             self.site = "CCP"
@@ -609,7 +609,7 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
         if self.doSubmit:
             print "@@ Submitting jobs..."
             if self.site == "UOS":
-              if os.environ['HOSTNAME'].startswith("gate2") :
+              if os.environ['HOSTNAME'].startswith("gate") :
                 os.system("cd %s;./submit.sh; cd -" % self.jobDir)
               else :
                 os.system("ssh uosaf0008 'cd %s;./submit.sh'" % self.jobDir)
