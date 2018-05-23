@@ -108,9 +108,9 @@ class TheJobConfig():
         sys.argv=[]
         sys.argv.extend(["cmsRun", ".py"])
         sys.argv.extend(self.additional_options.split())
-        process = imp.load_source("process", self.cfgFileName).process
+        self.process = imp.load_source("process", self.cfgFileName).process
         sys.stdout = cout
-        source = process.source
+        source = self.process.source
         if source.type_() == "EmptySource":
             if '--maxEvent' not in opts or '--nJobs' not in opts:
                 print "ERROR: --maxEvent, --nJobs are necessary for the EmptySource"
@@ -251,10 +251,10 @@ class TheJobConfig():
         sys.argv=[]
         sys.argv.extend(["cmsRun", ".py"])
         sys.argv.extend(self.additional_options.split())
-        process = imp.load_source('process', self.cfgFileName).process
+        process = self.process
         process.maxEvents.input = self.maxEvent
         ## Customise the cfg
-        if self.customise != None: self.customise(process)
+        if self.customise != None: process = self.customise(process)
         sys.stdout = cout
 
         ## Memorise to modify output file names
