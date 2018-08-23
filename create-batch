@@ -270,7 +270,7 @@ class TheJobConfig():
             f = re.sub(r'^file:', '', f)            
             self.outFileNames.append(f)
             
-        pklFileName = "%s/job_cfg.pkl" % (self.jobDir)
+        pklFileName = "%s/job_cfg.pkl" % (self.jobDir)        
         cPickle.dump(process, open(pklFileName, "w"))
         
         ## Split files into jobs and write python cfg
@@ -286,7 +286,7 @@ class TheJobConfig():
                 cfgOut = open(cfgFileName, "w")
                 print>>cfgOut, """#!/usr/bin/env python
 import cPickle
-process = cPickle.load(open("%s")) """ % ("job_cfg.pkl")
+process = cPickle.load(open("job_cfg.pkl")) """
                 
                 print>>cfgOut, """process.source.fileNames = %s """ % (self.files[begin:end])
                 ## Add secondary files if requested                
@@ -303,7 +303,7 @@ process = cPickle.load(open("%s")) """ % ("job_cfg.pkl")
                 print>>cfgOut, """#!/usr/bin/env python
 import FWCore.ParameterSet.Config as cms
 import cPickle
-process = cPickle.load(open("%s")) """ % (pklFileName)
+process = cPickle.load(open("job_cfg.pkl")) """
                 
                 print>>cfgOut, """process.source.firstRun = cms.untracked.uint32(%s)""" % (self.firstRun)
                 print>>cfgOut, """process.source.firstLuminosityBlock = cms.untracked.uint32(%s)""" % (section+1)
