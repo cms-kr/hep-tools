@@ -572,7 +572,9 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
 
         ## Special care for the Singularity environment at KISTI
         if self.site == "KISTI":
-            print>>jdlOut, '''+SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
+            print>>jdlOut, '''
+accounting_group=group_cms
++SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
 +SingularityBind = "/cvmfs, /cms, /share"'''
             requirements.append("HasSingularity == true")
 
