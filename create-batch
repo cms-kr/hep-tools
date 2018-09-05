@@ -567,7 +567,15 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
             print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
             remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
             print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
+
         requirements = []
+
+        ## Special care for the Singularity environment at KISTI
+        if self.site == "KISTI":
+            print>>jdlOut, '''+SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
++SingularityBind = "/cvmfs, /cms, /share"'''
+            requirements.append("HasSingularity == true")
+
         if len(self.blacklist) > 0:
             requirements.extend(["Machine != \""+x+"\"" for x in self.blacklist])
         if len(self.whitelist) > 0: 
