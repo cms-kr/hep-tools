@@ -331,9 +331,9 @@ fi
 SECTION=`printf %03d $1`
 
 if [ _$CMS_PATH == _ ]; then
-  export CMS_PATH={2}
-  source $CMS_PATH/cmsset_default.sh
+  export CMS_PATH={2}  
 fi
+source $CMS_PATH/cmsset_default.sh
 
 tar xzf {0}/job.tar.gz
 cd {1}
@@ -410,9 +410,9 @@ else
 fi
 
 if [ _$CMS_PATH == _ ]; then
-  export CMS_PATH={2}
-  source $CMS_PATH/cmsset_default.sh
+  export CMS_PATH={2}  
 fi
+source $CMS_PATH/cmsset_default.sh
 
 hostname
 ## Prepare workdirectory
@@ -486,9 +486,9 @@ fi
 SECTION=`printf %03d $1`
 
 if [ _$CMS_PATH == _ ]; then
-  export CMS_PATH={2}
-  source $CMS_PATH/cmsset_default.sh
+  export CMS_PATH={2}  
 fi
+source $CMS_PATH/cmsset_default.sh
 
 hostname
 tar xzf job.tar.gz
