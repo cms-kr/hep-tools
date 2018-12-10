@@ -206,28 +206,16 @@ class TheJobConfig():
         ## Make absolute path
         if not self.dest.startswith('/') and '://' not in self.dest:
             self.dest = os.path.abspath(self.dest)
+        ## Default transfer command by simple copy command
+        self.transferCmd = "mv "
         if self.site == "CERN":
             if self.dest.startswith('/store/'): self.dest = 'root://eoscms//eos/cms'+self.dest
-            if self.dest.startswith('root://'):
-                self.transferCmd = '"xrdcp "'
             #elif self.dest != os.path.abspath(self.jobDir):
-            else:
-                self.transferCmd = "mv "
         elif self.site == "KISTI":
             if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///xrd/%s' % self.dest
-            if self.dest.startswith('root://'):
-                self.transferCmd = 'xrdcp '
-            else:
-                self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR. /cms/scratch is not supporting now.
         elif self.site == "KNU":
             if self.dest.startswith('/store/'): self.dest = 'root://cluster142.knu.ac.kr///%s' % self.dest
-            if self.dest.startswith('root://'):
-                self.transferCmd = 'xrdcp '
-            else:
-                self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR. /cms/scratch is not supporting now.
-        else:
-            ## Default transfer command by simple copy command
-            self.transferCmd = "mv "
+        if self.dest.startswith('root://'): self.transferCmd = '"xrdcp "'
 
         ## Set output files
         self.outFileNames = []
@@ -243,6 +231,20 @@ class TheJobConfig():
             os.makedirs(self.dest)
             if self.site == "KISTI":
                 os.system("chmod go+w %s" % self.dest)
+
+        elif self.transferCmd.startswith('xrdcp') and self.dest.startswith('root://'):
+            host, outDir = self.dest[7:].split('/',1)
+            ## Recursively run xrdfs-mkdir
+            p = '/' 
+            res = 0 ## keep result of xrdfs-ls
+            for x in outDir.lstrip('/').split('/'):
+                if x == '': continue
+                p = '%s/%s' % (p, x)
+                if res == 0: res = os.system("xrdfs %s ls %s >& /dev/null" % (host, p))
+                if res != 0:
+                    print "xrdfs-mkdir %s" % p
+                    res1 = os.system("xrdfs %s mkdir %s" % (host, p))
+
         elif self.transferCmd.startswith('eos'):
             print "@@ Preparing output eos directory in", self.dest, "..."
             os.system("""shopt -s expand_aliases
