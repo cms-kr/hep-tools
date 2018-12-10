@@ -26,7 +26,7 @@ def usage():
     print "   --secondFileList DATA_FILES      Secondary file list text file"
     print "   -n                               Do not submit jobs to batch"
     print "   --transferDest OUTPUT_LOCATION   OUTPUT DIRECTORY (/store will be assumed to SE)"
-    print "   -g                               Grid certificate is required"
+    print "   -G                               Disable Grid certificate"
     print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
     print "   --transferFiles                  Additional files to transfer"
     print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
@@ -56,7 +56,7 @@ class TheJobConfig():
         ## Initialise configuration, set site-dependent default values
         self.site = ""
         self.scheduler = ""
-        self.doGrid = False
+        self.doGrid = True
         self.doSubmit = True
         self.maxEvent = -1
         self.additional_options=""
@@ -70,7 +70,6 @@ class TheJobConfig():
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
             self.scheduler = "CONDOR"
-            #opts['-g'] = True ## Enforce to carry grid certificate
             #queue = "batch"
         elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
             self.site = "CCP"
@@ -177,7 +176,7 @@ class TheJobConfig():
 
         ## Override options if they are given
         if '-n' in opts: self.doSubmit = False
-        if '-g' in opts: self.doGrid   = True
+        if '-G' in opts: self.doGrid   = False
         if '--queue' in opts: queue = opts['--queue']
         if '--blacklist' in opts:
             self.blacklist = opts['--blacklist'].split(',')
