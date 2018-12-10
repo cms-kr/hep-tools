@@ -220,7 +220,7 @@ class TheJobConfig():
             else:
                 self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR. /cms/scratch is not supporting now.
         elif self.site == "KNU":
-            if self.dest.startswith('/store/'): self.dest = 'root://cluster142.knu.ac.kr///xrd/%s' % self.dest
+            if self.dest.startswith('/store/'): self.dest = 'root://cluster142.knu.ac.kr///pnfs/knu.ac.kr/data/cms/%s' % self.dest
             if self.dest.startswith('root://'):
                 self.transferCmd = 'xrdcp '
             else:
