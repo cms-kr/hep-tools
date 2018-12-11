@@ -215,7 +215,7 @@ class TheJobConfig():
             if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///xrd/%s' % self.dest
         elif self.site == "KNU":
             if self.dest.startswith('/store/'): self.dest = 'root://cluster142.knu.ac.kr///%s' % self.dest
-        if self.dest.startswith('root://'): self.transferCmd = '"xrdcp "'
+        if self.dest.startswith('root://'): self.transferCmd = 'xrdcp '
 
         ## Set output files
         self.outFileNames = []
