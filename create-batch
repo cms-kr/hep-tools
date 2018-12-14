@@ -459,7 +459,10 @@ for FILE in %s; do
         sleep 30
         ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
-done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
+done
+
+## Clean up current workarea
+rm -rf /tmp/${{USER}}/PBS_${{PBS_JOBID}}""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
