@@ -440,6 +440,7 @@ if [ $EXITCODE == 0 ]; then
 else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
+    rm -rf /tmp/${{USER}}/PBS_${{PBS_JOBID}}
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
