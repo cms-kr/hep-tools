@@ -349,15 +349,15 @@ eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
-echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
-echo cmsRun job_${{SECTION}}_cfg.py {3}
-time cmsRun job_${{SECTION}}_cfg.py {3}
+echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> {0}/submit.log
+echo cmsRun job_${SECTION}_cfg.py {3}
+time cmsRun job_${SECTION}_cfg.py {3}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
-    echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
+    echo ENDED `date` cmsRun job_${SECTION}_cfg.py >> {0}/submit.log
 else
     rm -f core.*
-    echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
+    echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py >> {0}/submit.log
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
@@ -423,8 +423,8 @@ source $CMS_PATH/cmsset_default.sh
 
 hostname
 ## Prepare workdirectory
-mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
-cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
+mkdir -p /tmp/${USER}/PBS_${PBS_JOBID}
+cd /tmp/${USER}/PBS_${PBS_JOBID}
 tar xzf {0}/job.tar.gz
 cd {1}
 scram build ProjectRename
@@ -432,15 +432,15 @@ eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
-echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
-time cmsRun job_${{SECTION}}_cfg.py {3}
+echo BEGIN `date` cmsRun job_${SECTION}_cfg.py >> {0}/submit.log
+time cmsRun job_${SECTION}_cfg.py {3}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
-    echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
+    echo ENDED `date` cmsRun job_${SECTION}_cfg.py >> {0}/submit.log
 else
     rm -f core.*
-    echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py >> {0}/submit.log
-    rm -rf /tmp/${{USER}}/PBS_${{PBS_JOBID}}
+    echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py >> {0}/submit.log
+    rm -rf /tmp/${USER}/PBS_${PBS_JOBID}
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout, """
@@ -463,7 +463,7 @@ for FILE in %s; do
 done
 
 ## Clean up current workarea
-rm -rf /tmp/${{USER}}/PBS_${{PBS_JOBID}}""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
+rm -rf /tmp/${USER}/PBS_${PBS_JOBID}""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
@@ -510,16 +510,16 @@ eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
-echo BEGIN `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
+echo BEGIN `date` cmsRun job_${SECTION}_cfg.py #>> {0}/submit.log
 ls -al
-time cmsRun job_${{SECTION}}_cfg.py {3}
+time cmsRun job_${SECTION}_cfg.py {3}
 EXITCODE=$?
 ls -al
 if [ $EXITCODE == 0 ]; then
-    echo ENDED `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
+    echo ENDED `date` cmsRun job_${SECTION}_cfg.py #>> {0}/submit.log
 else
     rm -f core.*
-    echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
+    echo TERMINATED_$EXITCODE `date` cmsRun job_${SECTION}_cfg.py #>> {0}/submit.log
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         if self.transferCmd != '':
