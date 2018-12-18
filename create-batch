@@ -49,23 +49,23 @@ except:
     print "!!! Error parsing arguments"
     usage()
 
-
 import FWCore.ParameterSet.Config as cms
-class TheJobConfig():
-    def __init__(self, opts):
-        ## Initialise configuration, set site-dependent default values
+class TheSiteConfig:
+    def __init__(self, **kwargs):
+        hostName = os.environ["HOSTNAME"]
+        userName = os.environ["USER"]
+
         self.site = ""
         self.scheduler = ""
-        self.doGrid = True
-        self.doSubmit = True
-        self.maxEvent = -1
-        self.additional_options=""
-        self.blacklist = []
-        self.whitelist = []
-        hostName = os.environ['HOSTNAME']
+
+        queue = None
+        ## Load the site default configuration
         if hostName.startswith("lxplus") or hostName.endswith("cern.ch"):
             self.site = "CERN"
             self.scheduler = "LSB"
+            self.xrdSrv = 'eoscms'
+            self.xrdBase = '/eos/cms'
+            self.localBase = '/eos/cms'
             queue = "8nh"
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
@@ -78,29 +78,72 @@ class TheJobConfig():
         elif 'knu.ac.kr' in hostName: ## KNU T2/T3
             self.site = "KNU"
             self.scheduler = "PBS"
+            self.xrdSrv = 'cluster142.knu.ac.kr'
+            self.xrdBase = '/'
+            self.localBase = '/pnfs/knu.ac.kr/data/cms'
             queue = "cms"
         elif hostName.endswith('sdfarm.kr'):
             self.site = "KISTI"
             self.scheduler = "CONDOR"
+            self.xrdSrv = 'cms-xrdr.sdfarm.kr:1094/'
+            self.xrdBase = '/xrd'
+            self.localBase = '/xrootd_user/%s/xrootd' % userName
         else:
-            self.site = "NONE"
-            self.scheculer = "NONE"
             print "!!! This site is not supported"
             sys.exit()
 
+        if 'queue' in kwargs: queue = kwargs['queue']
+
+        ## Determine transfer command, default transfer command by simple mv command
+        ## NOTE: kwargs['dest'] must be given in this script. exception in this line means there's unexpected modification
+        self.dest = kwargs['dest']
+        if dest.startswith('/store/'): self.dest = 'root://%s/%s/%s' % (self.xrdSrv, self.xrdBase, self.dest)
+        ## Make absolute path
+        if '://' not in self.dest: self.dest = os.path.abspath(self.dest)
+        self.transferCmd = 'xrdcp' if self.dest.startswith('root://') else 'mv'
+
+        ## Determine submit command
+        if self.scheduler == "CONDOR":
+            self.submitCmd = 'condor_submit submit.jds'
+        else:
+            if   self.scheduler == "LSB"   : self.submitCmd = 'bsub'
+            elif self.scheduler == "PBS"   : self.submitCmd = 'qsub -N'
+
+            if queue: self.submitCmd += ' -q %s' % queue
+
+class TheJobConfig:
+    def __init__(self, opts):
+        self.maxEvent = -1
+
+        self.doSubmit = ('-n' not in opts) ## Submit jobs by default unless -n is given
+        self.doGrid = ('-G' not in opts) ## Carry the grid certificate by default unless -G is given
+
+        self.blacklist = opts['--blacklist'].split(',') if '--blacklist' in opts else []
+        self.whitelist = opts['--whitelist'].split(',') if '--whitelist' in opts else []
+        self.outFileNames = opts['--transferFiles'].split(',') if '--transferFiles' in opts else []
+        self.additional_options = opts['--args'] if '--args' in opts else ""
+
+        ## Initialise configuration, set site-dependent default values
+        kwargs = {}
+        if '--queue' in opts: kwargs['queue'] = opts['--queue']
+        ## Default destination to the workdir
+        kwargs['dest'] = opts['--transferDest'] if '--transferDest' in opts else self.jobDir
+
+        self.config = TheSiteConfig(**kwargs)
+        if self.config.dest == self.jobDir: self.config.transferCmd = ''
+
         ## (pre) load cfg file to determine the cmssw job type
-        if '--args' in opts : self.additional_options = opts['--args']
-        try:
-            self.cfgFileName = opts['--cfg']
-            if not self.cfgFileName.endswith('.py'):
-                print "ERROR: Python config file is needed"
-                usage()
-            if not os.path.exists(self.cfgFileName):
-                print "ERROR: Cannot find config file", self.cfgFileName
-                sys.exit()
-        except:
-            print "!!! Error parsing cfg option or wrong cfg file"
+        if '--cfg' not in opts:
+            print 'ERROR: --cfg is mandatory option'
             usage()
+
+        self.cfgFileName = opts['--cfg']
+        if not self.cfgFileName.endswith('.py'):
+            print "ERROR: Python config file is needed"
+            usage()
+        if not os.path.exists(self.cfgFileName):
+            print "ERROR: Cannot find config file", self.cfgFileName
+            sys.exit()
 
         cout = sys.stdout
         sys.stdout = open("/dev/null", "w")
@@ -116,9 +159,7 @@ class TheJobConfig():
                 sys.exit()
             self.maxEvent = int(opts['--maxEvent'])
             self.nSection = int(opts['--nJobs'])
-            self.firstRun = 1
-            if '--firstRun' in opts:
-                self.firstRun = int(opts['--firstRun'])
+            self.firstRun = int(opts['--firstRun']) if '--firstRun' in opts else 1
         elif source.type_() == "PoolSource":
             if '--maxEvent' in opts: self.maxEvent = int(opts['--maxEvent'])
             fileList = opts['--fileList']
@@ -129,8 +170,7 @@ class TheJobConfig():
             ## Collect root files
             self.files = []
             for f in open(fileList).readlines():
-                f = f.strip()
-                f = f.strip('\',"')
+                f = f.strip().strip('\',"')
                 if len(f) < 5: continue
                 if '#' == f[0] or '.root' != f[-5:]: continue
                 self.files.append(f)
@@ -174,15 +214,6 @@ class TheJobConfig():
             print "!!! Error parsing options"
             usage()
 
-        ## Override options if they are given
-        if '-n' in opts: self.doSubmit = False
-        if '-G' in opts: self.doGrid   = False
-        if '--queue' in opts: queue = opts['--queue']
-        if '--blacklist' in opts:
-            self.blacklist = opts['--blacklist'].split(',')
-        if '--whitelist' in opts:
-            self.whitelist = opts['--whitelist'].split(',')
-
         ## Load customisation if given
         self.customise = None
         if '--customise' in opts:
@@ -192,72 +223,29 @@ class TheJobConfig():
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
                 else: print "Cannot find customise(process) function in the cfg ", customiseFile
 
-        ## Determine submit command
-        if self.scheduler == "LSB":
-            self.submitCmd = 'bsub -q %s' % queue
-        elif self.scheduler == "PBS":
-            self.submitCmd = 'qsub -q %s -N' % queue
-        elif self.scheduler == "CONDOR":
-            self.submitCmd = 'condor_submit submit.jds'
-
-        ## Determine transfer command by hostname and transfer self.destination option
-        if '--transferDest' not in opts: self.dest = self.jobDir ## Default destination to the workdir
-        else: self.dest = opts['--transferDest']
-        ## Make absolute path
-        if not self.dest.startswith('/') and '://' not in self.dest:
-            self.dest = os.path.abspath(self.dest)
-        ## Default transfer command by simple copy command
-        self.transferCmd = "mv "
-        if self.site == "CERN":
-            if self.dest.startswith('/store/'): self.dest = 'root://eoscms//eos/cms'+self.dest
-            #elif self.dest != os.path.abspath(self.jobDir):
-        elif self.site == "KISTI":
-            if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///xrd/%s' % self.dest
-        elif self.site == "KNU":
-            if self.dest.startswith('/store/'): self.dest = 'root://cluster142.knu.ac.kr///%s' % self.dest
-        if self.dest.startswith('root://'): self.transferCmd = 'xrdcp '
-
-        ## Set output files
-        self.outFileNames = []
-        if '--transferFiles' in opts:
-            self.outFileNames = opts['--transferFiles'].split(',')
-
     def initialiseWorkspace(self):
         ## Prepare working directory
         print "@@ Preparing batch jobs in", self.jobName, "..."
         os.makedirs(self.jobDir)
-        if self.transferCmd.startswith('mv') and not os.path.exists(self.dest):
-            print "@@ Preparing output scratch directory in", self.dest, "..."
-            os.makedirs(self.dest)
-            if self.site == "KISTI":
-                os.system("chmod go+w %s" % self.dest)
+        dest = self.config.dest
+        if self.config.transferCmd == 'mv' and not os.path.exists(dest):
+            print "@@ Preparing output scratch directory in", dest, "..."
+            os.makedirs(dest)
+            if self.config.site == "KISTI": os.system("chmod go+w %s" % dest)
 
-        elif self.transferCmd.startswith('xrdcp') and self.dest.startswith('root://'):
-            host, outDir = self.dest[7:].split('/',1)
+        elif self.config.transferCmd == 'xrdcp':
+            print "@@ Preparing output directory in", self.config.dest, "..."
 
-            if self.site == "KISTI":
-                print "@@ Preparing output directory in", self.dest, "..."
-                if not os.path.exists("/xrootd_user/%s/xrootd/%s" % (os.environ["USER"], outDir)):
-                    os.makedirs("/xrootd_user/%s/xrootd/%s" % (os.environ["USER"], outDir))
-            elif self.site == "KNU":
-                print "@@ Preparing output directory in", self.dest, "..."
-                if not os.path.exists("/pnfs/knu.ac.kr/data/cms/%s" % outDir):
-                    os.makedirs("/pnfs/knu.ac.kr/data/cms/%s" % outDir)
-            elif self.site == "CERN":
-                print "@@ Preparing output eos directory in", self.dest, "..."
-                if not os.path.exists("/eos/cms/%s" % outDir):
-                    os.makedirs("/eos/cms/%s" % outDir)
+            destStorage, destDir = self.config.dest[7:].split('/',1)
+            if destStorage == self.config.xrdSrv and
+               self.config.site in ("KNU", "CERN"):
+                if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
+                if not os.path.exists("%s/%s" % (self.config.localBase, destDir)):
+                    os.makedirs("%s/%s" % (self.config.localBase, destDir))
+
             else:
-                ## Recursively run xrdfs-mkdir
-                p = '/' 
-                res = 0 ## keep result of xrdfs-ls
-                for x in outDir.lstrip('/').split('/'):
-                    if x == '': continue
-                    p = '%s/%s' % (p, x)
-                    if res == 0: res = os.system("xrdfs %s ls %s >& /dev/null" % (host, p))
-                    if res != 0:
-                        print "xrdfs-mkdir %s" % p
-                        res1 = os.system("xrdfs %s mkdir %s" % (host, p))
+                print "gfal-mkdir %s" % p
+                os.system("gfal-mkdir %s" % dest)
 
         ## Load cfg file
         print "@@ Loading python cfg..."
@@ -327,9 +315,9 @@ process = cPickle.load(open("job_cfg.pkl")) """
                     print>>cfgOut, """process.RandomNumberGeneratorService.%s.initialSeed = %s""" % (p,section+1000+shift+1000*self.firstRun)
                     
         ## Make scripts
-        if   self.scheduler == "LSB": self.makeLSBJob()
-        elif self.scheduler == "PBS": self.makePBSJob()
-        elif self.scheduler == "CONDOR": self.makeCondorJob()
+        if   self.config.scheduler == "LSB": self.makeLSBJob()
+        elif self.config.scheduler == "PBS": self.makePBSJob()
+        elif self.config.scheduler == "CONDOR": self.makeCondorJob()
 
     def makeLSBJob(self):
 
@@ -388,7 +376,7 @@ for FILE in %s; do
         echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
         ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
-done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
+done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
@@ -471,7 +459,7 @@ for FILE in %s; do
 done
 
 ## Clean up current workarea
-rm -rf /tmp/${USER}/PBS_${PBS_JOBID}""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
+rm -rf /tmp/${USER}/PBS_${PBS_JOBID}""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
@@ -530,7 +518,7 @@ else
     echo TERMINATED_$EXITCODE `date` cmsRun job_${{SECTION}}_cfg.py #>> {0}/submit.log
     exit 1
 fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
-        if self.transferCmd != '':
+        if self.config.transferCmd != '':
             print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
@@ -548,7 +536,7 @@ for FILE in %s; do
         sleep 30
         ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
     fi
-done""" % (' '.join(self.outFileNames), self.transferCmd, self.dest)
+done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.dest)
         print>>fout, "echo FINISHED `date` # >> %s/submit.log" % self.jobDir
         fout = None
         os.chmod(runFileName, 0755)
@@ -582,7 +570,7 @@ when_to_transfer_output = ON_EXIT
 output = job_$(Process).log
 error = job_$(Process).err
 transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
-        if self.transferCmd == '':
+        if self.config.transferCmd == '':
             print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
             remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
             print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
@@ -590,7 +578,7 @@ transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
         requirements = []
 
         ## Special care for the Singularity environment at KISTI
-        if self.site == "KISTI":
+        if self.config.site == "KISTI":
             print>>jdlOut, '''
 accounting_group=group_cms
 +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
@@ -637,12 +625,12 @@ accounting_group=group_cms
     def submit(self):
         if self.doSubmit:
             print "@@ Submitting jobs..."
-            if self.site == "UOS":
+            if self.config.site == "UOS":
               if os.environ['HOSTNAME'].startswith("gate") :
                 os.system("cd %s;./submit.sh; cd -" % self.jobDir)
               else :
                 os.system("ssh uosaf0008 'cd %s;./submit.sh'" % self.jobDir)
-            elif self.site == "CERN" and not os.environ['HOSTNAME'].startswith("lxplus"):
+            elif self.config.site == "CERN" and not os.environ['HOSTNAME'].startswith("lxplus"):
                 os.system("ssh lxplus.cern.ch 'cd %s;./submit.sh'" % self.jobDir)
             else:
                 os.system("cd %s;./submit.sh" % self.jobDir)
