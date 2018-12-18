@@ -234,16 +234,24 @@ class TheJobConfig():
 
         elif self.transferCmd.startswith('xrdcp') and self.dest.startswith('root://'):
             host, outDir = self.dest[7:].split('/',1)
-            ## Recursively run xrdfs-mkdir
-            p = '/' 
-            res = 0 ## keep result of xrdfs-ls
-            for x in outDir.lstrip('/').split('/'):
-                if x == '': continue
-                p = '%s/%s' % (p, x)
-                if res == 0: res = os.system("xrdfs %s ls %s >& /dev/null" % (host, p))
-                if res != 0:
-                    print "xrdfs-mkdir %s" % p
-                    res1 = os.system("xrdfs %s mkdir %s" % (host, p))
+
+            if self.site == "KISTI":
+                print "@@ Preparing output directory in", self.dest, "..."
+                os.system("mkdir -p /xrootd_user/%s/xrootd/%s" % (os.environ["USER"], outDir))
+            elif self.site == "KNU":
+                print "@@ Preparing output directory in", self.dest, "..."
+                os.system("mkdir -p /pnfs/knu.ac.kr/data/cms/%s" % outDir)
+            else:
+                ## Recursively run xrdfs-mkdir
+                p = '/' 
+                res = 0 ## keep result of xrdfs-ls
+                for x in outDir.lstrip('/').split('/'):
+                    if x == '': continue
+                    p = '%s/%s' % (p, x)
+                    if res == 0: res = os.system("xrdfs %s ls %s >& /dev/null" % (host, p))
+                    if res != 0:
+                        print "xrdfs-mkdir %s" % p
+                        res1 = os.system("xrdfs %s mkdir %s" % (host, p))
 
         elif self.transferCmd.startswith('eos'):
             print "@@ Preparing output eos directory in", self.dest, "..."
