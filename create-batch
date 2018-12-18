@@ -237,10 +237,16 @@ class TheJobConfig():
 
             if self.site == "KISTI":
                 print "@@ Preparing output directory in", self.dest, "..."
-                os.system("mkdir -p /xrootd_user/%s/xrootd/%s" % (os.environ["USER"], outDir))
+                if not os.path.exists("/xrootd_user/%s/xrootd/%s" % (os.environ["USER"], outDir)):
+                    os.makedirs("/xrootd_user/%s/xrootd/%s" % (os.environ["USER"], outDir))
             elif self.site == "KNU":
                 print "@@ Preparing output directory in", self.dest, "..."
-                os.system("mkdir -p /pnfs/knu.ac.kr/data/cms/%s" % outDir)
+                if not os.path.exists("/pnfs/knu.ac.kr/data/cms/%s" % outDir):
+                    os.makedirs("/pnfs/knu.ac.kr/data/cms/%s" % outDir)
+            elif self.site == "CERN":
+                print "@@ Preparing output eos directory in", self.dest, "..."
+                if not os.path.exists("/eos/cms/%s" % outDir):
+                    os.makedirs("/eos/cms/%s" % outDir)
             else:
                 ## Recursively run xrdfs-mkdir
                 p = '/' 
@@ -252,12 +258,6 @@ class TheJobConfig():
                     if res != 0:
                         print "xrdfs-mkdir %s" % p
                         res1 = os.system("xrdfs %s mkdir %s" % (host, p))
-
-        elif self.transferCmd.startswith('eos'):
-            print "@@ Preparing output eos directory in", self.dest, "..."
-            os.system("""shopt -s expand_aliases
-                         source /afs/cern.ch/project/eos/installation/cms/etc/setup.sh
-                         eos mkdir -p %s""" % self.dest)
 
         ## Load cfg file
         print "@@ Loading python cfg..."
