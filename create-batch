@@ -97,7 +97,7 @@ class TheSiteConfig:
         ## Determine transfer command, default transfer command by simple mv command
         ## NOTE: kwargs['dest'] must be given in this script. exception in this line means there's unexpected modification
         self.dest = kwargs['dest']
-        if dest.startswith('/store/'): self.dest = 'root://%s/%s/%s' % (self.xrdSrv, self.xrdBase, self.dest)
+        if self.dest.startswith('/store/'): self.dest = 'root://%s/%s/%s' % (self.xrdSrv, self.xrdBase, self.dest)
         ## Make absolute path
         if '://' not in self.dest: self.dest = os.path.abspath(self.dest)
         self.transferCmd = 'xrdcp' if self.dest.startswith('root://') else 'mv'
@@ -126,11 +126,6 @@ class TheJobConfig:
         ## Initialise configuration, set site-dependent default values
         kwargs = {}
         if '--queue' in opts: kwargs['queue'] = opts['--queue']
-        ## Default destination to the workdir
-        kwargs['dest'] = opts['--transferDest'] if '--transferDest' in opts else self.jobDir
-
-        self.config = TheSiteConfig(**kwargs)
-        if self.config.dest == self.jobDir: self.config.transferCmd = ''
 
         ## (pre) load cfg file to determine the cmssw job type
         if '--cfg' not in opts:
@@ -223,6 +218,12 @@ class TheJobConfig:
                 if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
                 else: print "Cannot find customise(process) function in the cfg ", customiseFile
 
+        ## Default destination to the workdir
+        kwargs['dest'] = opts['--transferDest'] if '--transferDest' in opts else self.jobDir
+
+        self.config = TheSiteConfig(**kwargs)
+        if self.config.dest == self.jobDir: self.config.transferCmd = ''
+
     def initialiseWorkspace(self):
         ## Prepare working directory
         print "@@ Preparing batch jobs in", self.jobName, "..."
@@ -237,7 +238,7 @@ class TheJobConfig:
             print "@@ Preparing output directory in", self.config.dest, "..."
 
             destStorage, destDir = self.config.dest[7:].split('/',1)
-            if destStorage == self.config.xrdSrv and
+            if destStorage == self.config.xrdSrv and \
                self.config.site in ("KNU", "CERN"):
                 if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
                 if not os.path.exists("%s/%s" % (self.config.localBase, destDir)):
@@ -255,6 +256,8 @@ class TheJobConfig:
         sys.argv.extend(["cmsRun", ".py"])
         sys.argv.extend(self.additional_options.split())
         process = self.process
+        if not hasattr(process, 'maxEvents'): process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
+        if not hasattr(process.maxEvents, 'input'): process.maxEvents.input = cms.untracked.int32(-1)
         process.maxEvents.input = self.maxEvent
         ## Customise the cfg
         if self.customise != None: process = self.customise(process)
@@ -392,7 +395,7 @@ done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.des
         fout = open(submitFileName, "w")
         print>>fout, "#!/bin/bash"
         for section in range(self.nSection):
-            print>>fout, "{0} -J {1}.{2} -oo {3}/job_{2:03d}.log run_{4}.sh {2}".format(self.submitCmd, self.jobName, section, self.jobDir, self.jobName.replace('/','_'))
+            print>>fout, "{0} -J {1}.{2} -oo {3}/job_{2:03d}.log run_{4}.sh {2}".format(self.config.submitCmd, self.jobName, section, self.jobDir, self.jobName.replace('/','_'))
         fout = None
         os.chmod(submitFileName, 0755)
 
@@ -475,7 +478,7 @@ rm -rf /tmp/${USER}/PBS_${PBS_JOBID}""" % (' '.join(self.outFileNames), self.con
         fout = open(submitFileName, "w")
         print>>fout, "#!/bin/bash"
         for section in range(self.nSection):
-            print>>fout, "{0} {1}_{2} run_{3}.sh -vSECTION={2}".format(self.submitCmd, self.jobName, section, self.jobName.replace('/','_'))
+            print>>fout, "{0} {1}_{2} run_{3}.sh -vSECTION={2}".format(self.config.submitCmd, self.jobName, section, self.jobName.replace('/','_'))
         fout = None
         os.chmod(submitFileName, 0755)
 
@@ -551,7 +554,7 @@ done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.des
         submitFileName = "%s/submit.sh" % self.jobDir
         fout = open(submitFileName, "w")
         print>>fout, "#!/bin/bash"
-        print>>fout, self.submitCmd
+        print>>fout, self.config.submitCmd
         fout = None
         os.chmod(submitFileName, 0755)
 
