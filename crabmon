@@ -233,7 +233,6 @@ class CrabMonTkLine:
         if not os.path.exists("%s/.requestcache" % self.name): return
         run_command('finish', self.name)
         if not os.path.isdir('done'): os.mkdir('done')
-        os.system("mv %s done/" % self.name)
         self.statusBtn['state'] = 'disabled'
         self.resubmitBtn['state'] = 'disabled'
         self.getBtn['state'] = 'disabled'
