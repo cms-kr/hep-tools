@@ -245,7 +245,7 @@ class TheJobConfig:
                     os.makedirs("%s/%s" % (self.config.localBase, destDir))
 
             else:
-                print "gfal-mkdir %s" % p
+                print "gfal-mkdir %s" % dest
                 os.system("gfal-mkdir %s" % dest)
 
         ## Load cfg file
