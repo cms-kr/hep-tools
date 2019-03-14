@@ -97,7 +97,7 @@ class TheSiteConfig:
         ## Determine transfer command, default transfer command by simple mv command
         ## NOTE: kwargs['dest'] must be given in this script. exception in this line means there's unexpected modification
         self.dest = kwargs['dest']
-        if self.dest.startswith('/store/'): self.dest = 'root://%s/%s/%s' % (self.xrdSrv, self.xrdBase, self.dest)
+        if self.dest.startswith('/store/'): self.dest = 'root://%s/%s%s' % (self.xrdSrv, self.xrdBase, self.dest)
         ## Make absolute path
         if '://' not in self.dest: self.dest = os.path.abspath(self.dest)
         self.transferCmd = 'xrdcp' if self.dest.startswith('root://') else 'mv'
