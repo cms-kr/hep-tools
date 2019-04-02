@@ -219,7 +219,7 @@ class TheJobConfig:
 
         ## Default destination to the workdir
         kwargs['dest'] = opts['--transferDest'] if '--transferDest' in opts else self.jobDir
-        if self.doArchive: self.outFileNames.append("results_%s.tgz" % self.jobName)
+        if self.doArchive: self.outFileNames.append("../results_%s.tgz" % self.jobName)
 
         self.config = TheSiteConfig(**kwargs)
         if self.config.dest == self.jobDir: self.config.transferCmd = ''
@@ -361,7 +361,7 @@ if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
         if self.doArchive:
-            print>>fout, """    tar -czf result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
+            print>>fout, """    tar -czf ../result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
         print>>fout, """
 else
     rm -f core.*
@@ -451,7 +451,7 @@ if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
         if self.doArchive:
-            print>>fout, """    tar -czf result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
+            print>>fout, """    tar -czf ../result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
         print>>fout, """
 else
     rm -f core.*
@@ -538,7 +538,7 @@ if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} #>> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
         if self.doArchive:
-            print>>fout, """    tar -czf result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
+            print>>fout, """    tar -czf ../result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
         print>>fout,"""
 else
     rm -f core.*
