@@ -116,16 +116,6 @@ class TheJobConfig:
         self.outFileNames = opts['--transferFiles'].split(',') if '--transferFiles' in opts else []
         self.additional_options = opts['--args'] if '--args' in opts else ""
 
-        ## (pre) load cfg file to determine the cmssw job type
-        if '--cfg' not in opts:
-            print 'ERROR: --cfg is mandatory option'
-            usage()
-
-        self.cfgFileName = opts['--cfg']
-        if not os.path.exists(self.cfgFileName):
-            print "ERROR: Cannot find config file", self.cfgFileName
-            sys.exit()
-
         ## Initialise configuration, set site-dependent default values
         kwargs = {}
         if '--queue' in opts: kwargs['queue'] = opts['--queue']
@@ -135,8 +125,18 @@ class TheJobConfig:
                 print 'ERROR: --nJobs is mandatory option for custom shell command'
                 usage()
             self.nSection = int(opts['--nJobs'])
-            self.cmd = "%s %s $SECTION" % (self.cmd, self.cfgFileName)
+            self.cmd = "%s %s $SECTION" % (self.cmd, self.additional_options)
         else:
+            ## (pre) load cfg file to determine the cmssw job type
+            if '--cfg' not in opts:
+                print 'ERROR: --cfg is mandatory option'
+                usage()
+
+            self.cfgFileName = opts['--cfg']
+            if not os.path.exists(self.cfgFileName):
+                print "ERROR: Cannot find config file", self.cfgFileName
+                sys.exit()
+
             cout = sys.stdout
             sys.stdout = open("/dev/null", "w")
             sys.argv=[]
@@ -245,9 +245,7 @@ class TheJobConfig:
                 print "gfal-mkdir %s" % dest
                 os.system("gfal-mkdir %s" % dest)
 
-        if not hasattr(self, 'process'):
-            open("%s/%s" % (self.jobDir, os.path.basename(self.cfgFileName)), 'w').write(open(self.cfgFileName).read())
-        else:
+        if hasattr(self, 'process'):
             ## Load cfg file
             print "@@ Loading python cfg..."
             cout = sys.stdout
@@ -335,7 +333,8 @@ if [ $# != 1 ]; then
     echo "JOB SECTION NUMBER IS MISSING!!!"
     exit 1
 fi
-SECTION=`printf %03d $1`
+SECTION=${{@: -1}}
+FSECTION=`printf %03d $SECTION`
 
 if [ _$CMS_PATH == _ ]; then
   export CMS_PATH={2}
@@ -366,19 +365,19 @@ for FILE in %s; do
     PREFIX=${FILE%%.${EXT}}
     TRANSFERCMD=%s
     DESTDIR=%s
-    echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
-    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+    echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
@@ -408,9 +407,10 @@ done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.des
 
         print>>fout, """#!/bin/bash
 if [ _$PBS_ARRAYID != '_' ]; then
-    SECTION=`printf %03d $PBS_ARRAYID`
+    FSECTION=`printf %03d $PBS_ARRAYID`
+    SECTION=$PBS_ARRAYID
 elif [ _$SECTION != '_' ]; then
-    exprt SECTION=`printf %03d $SECTION`
+    exprt FSECTION=`printf %03d $SECTION`
 else
     echo "JOB SECTION NUMBER IS MISSING!!!"
     exit 1
@@ -449,16 +449,16 @@ for FILE in %s; do
     PREFIX=${FILE%%.${EXT}}
     TRANSFERCMD=%s
     DESTDIR=%s
-    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
 done
 
@@ -494,7 +494,8 @@ if [ $# != 1 ]; then
     echo "JOB SECTION NUMBER IS MISSING!!!"
     exit 1
 fi
-SECTION=`printf %03d $1`
+SECTION=${{@: -1}}
+FSECTION=`printf %03d $SECTION`
 
 if [ _$CMS_PATH == _ ]; then
   export CMS_PATH={2}
@@ -530,16 +531,16 @@ for FILE in %s; do
     PREFIX=${FILE%%.${EXT}}
     TRANSFERCMD=%s
     DESTDIR=%s
-    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${SECTION}.${EXT}
+        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.dest)
         print>>fout, "echo FINISHED `date` # >> %s/submit.log" % self.jobDir
@@ -658,7 +659,7 @@ if __name__ == '__main__':
 
     ## Create job configure
     if len(args) == 0 or (args[0] == 'cmsRun' and len(args) == 1):
-        args = ['cmsRun', 'job_${{SECTION}}_cfg.py']
+        args = ['cmsRun', 'job_${{FSECTION}}_cfg.py']
     jobConfig = TheJobConfig(' '.join(args), opts)
     jobConfig.initialiseWorkspace()
     jobConfig.archive()
