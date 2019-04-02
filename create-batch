@@ -33,6 +33,7 @@ def usage():
     print "   -G                               Disable Grid certificate"
     print "   --maxEvent N                     Maximum number of events per job (-1 by default)"
     print "   --transferFiles                  Additional files to transfer"
+    print "   -T                               Automatically transfer new files by archiveing them"
     print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
     print "   --args                           general arguments"
     print "   --firstRun N                     For MC: run number"
@@ -110,6 +111,7 @@ class TheJobConfig:
 
         self.doSubmit = ('-n' not in opts) ## Submit jobs by default unless -n is given
         self.doGrid = ('-G' not in opts) ## Carry the grid certificate by default unless -G is given
+        self.doArchive = ('-T' in opts)
 
         self.blacklist = opts['--blacklist'].split(',') if '--blacklist' in opts else []
         self.whitelist = opts['--whitelist'].split(',') if '--whitelist' in opts else []
@@ -217,6 +219,7 @@ class TheJobConfig:
 
         ## Default destination to the workdir
         kwargs['dest'] = opts['--transferDest'] if '--transferDest' in opts else self.jobDir
+        if self.doArchive: self.outFileNames.append("results_%s.tgz" % self.jobName)
 
         self.config = TheSiteConfig(**kwargs)
         if self.config.dest == self.jobDir: self.config.transferCmd = ''
@@ -350,10 +353,16 @@ if [ -f $CMSSW_BASE/proxy.x509 ]; then
 fi
 echo BEGIN `date` {4} {3} >> {0}/submit.log
 echo {4} {3}
+touch ___started___job___
 time {4} {3}
 EXITCODE=$?
+ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+        if self.doArchive:
+            print>>fout, """    tar -czf result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
+        print>>fout, """
 else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` {4} {3} >> {0}/submit.log
@@ -433,10 +442,17 @@ if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
 echo BEGIN `date` {4} {3} >> {0}/submit.log
+echo {4} {3}
+touch ___started___job___
 time {4} {3}
 EXITCODE=$?
+ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+        if self.doArchive:
+            print>>fout, """    tar -czf result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
+        print>>fout, """
 else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` {4} {3} >> {0}/submit.log
@@ -513,12 +529,17 @@ fi
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout,"""
 echo BEGIN `date` {4} {3} #>> {0}/submit.log
-ls -al
+echo {4} {3}
+touch ___started___job___
 time {4} {3}
 EXITCODE=$?
 ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} #>> {0}/submit.log
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+        if self.doArchive:
+            print>>fout, """    tar -czf result_%s.tgz -N "`date -r ___started___job___`" .""" % (self.jobName)
+        print>>fout,"""
 else
     rm -f core.*
     echo TERMINATED_$EXITCODE `date` {4} {3} #>> {0}/submit.log
@@ -578,7 +599,7 @@ error = job_$(Process).err
 transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
         if self.config.transferCmd == '':
             print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
-            remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
+            remapStrs = ["{2}/{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1], self.jobBase) for x in self.outFileNames]
             print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
 
         requirements = []
@@ -648,7 +669,7 @@ if __name__ == '__main__':
     # Parse arguments
     if len(sys.argv) < 2: usage()
     try:
-        opts, args = getopt(sys.argv[1:], 'ng', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
+        opts, args = getopt(sys.argv[1:], 'ngT', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
                                                  'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
                                                  'args=', 'secondFileList=', 'customise=', 'firstRun=',
                                                  'blacklist=','whitelist='])
