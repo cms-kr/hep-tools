@@ -219,7 +219,7 @@ class TheJobConfig:
 
         ## Default destination to the workdir
         kwargs['dest'] = opts['--transferDest'] if '--transferDest' in opts else self.jobDir
-        if self.doArchive: self.outFileNames.append("results_%s.tgz" % self.jobName)
+        if self.doArchive: self.outFileNames.append("result_%s.tgz" % self.jobName)
 
         self.config = TheSiteConfig(**kwargs)
         if self.config.dest == self.jobDir: self.config.transferCmd = ''
