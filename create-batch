@@ -106,10 +106,10 @@ class TheSiteConfig:
         if self.scheduler == "CONDOR":
             self.submitCmd = 'condor_submit submit.jds'
         else:
-            if   self.scheduler == "LSB"   : self.submitCmd = 'bsub '
-            elif self.scheduler == "PBS"   : self.submitCmd = 'qsub -N '
-
-            if queue: self.submitCmd += ' -q %s ' % queue
+            self.submitCmd = ""
+            if queue: self.submitCmd = ' -q %s ' % queue
+            if   self.scheduler == "LSB"   : self.submitCmd = 'bsub ' + self.submitCmd
+            elif self.scheduler == "PBS"   : self.submitCmd = 'qsub ' + self.submitCmd + '-N'
 
 class TheJobConfig:
     def __init__(self, opts):
