@@ -692,7 +692,7 @@ if __name__ == '__main__':
 
     ## Create job configure
     if len(args) == 0 or (args[0] == 'cmsRun' and len(args) == 1):
-        args = ['cmsRun', 'job_${{FSECTION}}_cfg.py']
+        args = ['cmsRun', 'job_${FSECTION}_cfg.py']
     jobConfig = TheJobConfig(' '.join(args), opts)
     jobConfig.initialiseWorkspace()
     jobConfig.archive()
