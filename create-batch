@@ -78,7 +78,7 @@ class TheSiteConfig:
         elif hostName.endswith('sdfarm.kr'):
             self.site = "KISTI"
             self.scheduler = "CONDOR"
-            self.xrdSrv = 'cms-xrdr.sdfarm.kr:1094/'
+            self.xrdSrv = 'cms-xrdr.private.lo:2094/'
             self.xrdBase = '/xrd'
             self.localBase = '/xrootd_user/%s/xrootd' % userName
         else:
@@ -681,7 +681,7 @@ if __name__ == '__main__':
     # Parse arguments
     if len(sys.argv) < 2: usage()
     try:
-        opts, args = getopt(sys.argv[1:], 'ngT', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
+        opts, args = getopt(sys.argv[1:], 'nGT', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
                                                  'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
                                                  'args=', 'secondFileList=', 'customise=', 'firstRun=',
                                                  'blacklist=','whitelist='])
