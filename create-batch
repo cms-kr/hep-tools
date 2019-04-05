@@ -611,7 +611,7 @@ error = job_$(Process).err
 transfer_input_files = job.tar.gz""" % self.jobName.replace('/','_')
         if self.config.transferCmd == '':
             print>>jdlOut, "transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames]))
-            remapStrs = ["{2}/{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1], self.jobBase) for x in self.outFileNames]
+            remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
             print>>jdlOut, 'transfer_output_remaps = "%s"' % (';'.join(remapStrs))
 
         requirements = []
