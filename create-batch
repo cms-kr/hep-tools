@@ -681,7 +681,7 @@ if __name__ == '__main__':
     # Parse arguments
     if len(sys.argv) < 2: usage()
     try:
-        opts, args = getopt(sys.argv[1:], 'ngT', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
+        opts, args = getopt(sys.argv[1:], 'nGT', ['jobName=', 'fileList=', 'maxFiles=', 'nJobs=', 'cfg=',
                                                  'maxEvent=', 'queue=', 'transferDest=', 'transferFiles=',
                                                  'args=', 'secondFileList=', 'customise=', 'firstRun=',
                                                  'blacklist=','whitelist='])
