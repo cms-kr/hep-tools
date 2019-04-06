@@ -349,9 +349,11 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 cd $CMSSW_BASE/src
-scram b clean
+scram build clean
+scram build vclean
 scram build -j
 cd -
+eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -446,9 +448,11 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 cd $CMSSW_BASE/src
-scram b clean
+scram build clean
+scram build vclean
 scram build -j
 cd -
+eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -538,9 +542,11 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 cd $CMSSW_BASE/src
-scram b clean
+scram build clean
+scram build vclean
 scram build -j
 cd -
+eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -657,7 +663,7 @@ accounting_group=group_cms
                  + " --exclude={0}/src/*/*/data --exclude=*.root".format(self.cmsswBase))
         os.system("tar rf {0}/job.tar {1}/src/*/*/data --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude-tag-all=.create-batch ")
-        os.system("tar rf {0}/job.tar {1}/src/*/*/python --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
+        os.system("tar rf {0}/job.tar {1}/src/*/*/python {1}/src/*/*/interface {1}/src/*/*/src {1}/src/*/*/plugins {1}/src/*/*/BuildFile* --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude-tag-all=.create-batch ")
         os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}::' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), os.path.basename(self.jobDir))
                  + exclCommon + " --exclude=*.root")
