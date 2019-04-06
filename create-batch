@@ -348,6 +348,10 @@ tar xzf {0}/job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
+cd $CMSSW_BASE/src
+scram b clean
+scram build -j
+cd -
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -356,7 +360,6 @@ echo {4} {3}
 touch ___started___job___
 time {4} {3}
 EXITCODE=$?
-ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
@@ -442,6 +445,10 @@ tar xzf {0}/job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
+cd $CMSSW_BASE/src
+scram b clean
+scram build -j
+cd -
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -450,7 +457,6 @@ echo {4} {3}
 touch ___started___job___
 time {4} {3}
 EXITCODE=$?
-ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
@@ -531,6 +537,10 @@ tar xzf job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
+cd $CMSSW_BASE/src
+scram b clean
+scram build -j
+cd -
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -541,7 +551,6 @@ echo {4} {3}
 touch ___started___job___
 time {4} {3}
 EXITCODE=$?
-ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} #>> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
