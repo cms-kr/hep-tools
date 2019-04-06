@@ -648,6 +648,8 @@ accounting_group=group_cms
                  + " --exclude={0}/src/*/*/data --exclude=*.root".format(self.cmsswBase))
         os.system("tar rf {0}/job.tar {1}/src/*/*/data --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude-tag-all=.create-batch ")
+        os.system("tar rf {0}/job.tar {1}/src/*/*/python --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
+                 + exclCommon + " --exclude-tag-all=.create-batch ")
         os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}::' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), os.path.basename(self.jobDir))
                  + exclCommon + " --exclude=*.root")
 
