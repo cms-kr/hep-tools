@@ -348,6 +348,12 @@ tar xzf {0}/job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
+cd $CMSSW_BASE/src
+scram build clean
+scram build vclean
+scram build -j
+cd -
+eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -356,7 +362,6 @@ echo {4} {3}
 touch ___started___job___
 time {4} {3}
 EXITCODE=$?
-ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
@@ -442,6 +447,12 @@ tar xzf {0}/job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
+cd $CMSSW_BASE/src
+scram build clean
+scram build vclean
+scram build -j
+cd -
+eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -450,7 +461,6 @@ echo {4} {3}
 touch ___started___job___
 time {4} {3}
 EXITCODE=$?
-ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} >> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
@@ -531,6 +541,12 @@ tar xzf job.tar.gz
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
+cd $CMSSW_BASE/src
+scram build clean
+scram build vclean
+scram build -j
+cd -
+eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
@@ -541,7 +557,6 @@ echo {4} {3}
 touch ___started___job___
 time {4} {3}
 EXITCODE=$?
-ls -al
 if [ $EXITCODE == 0 ]; then
     echo ENDED `date` {4} {3} #>> {0}/submit.log
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
@@ -621,6 +636,7 @@ transfer_input_files = job.tar.gz""".format(self.jobName.replace('/','_'))
         if self.config.site == "KISTI":
             print>>jdlOut, '''
 accounting_group=group_cms
++CREATE_BATCH = True
 +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
 +SingularityBind = "/cvmfs, /cms, /share"'''
             requirements.append("HasSingularity == true")
@@ -648,7 +664,7 @@ accounting_group=group_cms
                  + " --exclude={0}/src/*/*/data --exclude=*.root".format(self.cmsswBase))
         os.system("tar rf {0}/job.tar {1}/src/*/*/data --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude-tag-all=.create-batch ")
-        os.system("tar rf {0}/job.tar {1}/src/*/*/python --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
+        os.system("tar rf {0}/job.tar {1}/src/*/*/python {1}/src/*/*/interface {1}/src/*/*/src {1}/src/*/*/plugins {1}/src/*/*/BuildFile* --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude-tag-all=.create-batch ")
         os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}::' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), os.path.basename(self.jobDir))
                  + exclCommon + " --exclude=*.root")
