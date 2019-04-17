@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+version = "18.04.17"
+
 import sys, os, re
 # Check necessary envvars
 if 'CMSSW_VERSION' not in os.environ:
@@ -636,9 +638,9 @@ transfer_input_files = job.tar.gz""".format(self.jobName.replace('/','_'))
         if self.config.site == "KISTI":
             print>>jdlOut, '''
 accounting_group=group_cms
-+CREATE_BATCH = True
++Tag = create-batch v%s
 +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
-+SingularityBind = "/cvmfs, /cms, /share"'''
++SingularityBind = "/cvmfs, /cms, /share"''' % (version)
             requirements.append("HasSingularity == true")
 
         if len(self.blacklist) > 0:
