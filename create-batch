@@ -207,19 +207,17 @@ class TheJobConfig():
         ## Make absolute path
         if not self.dest.startswith('/') and '://' not in self.dest:
             self.dest = os.path.abspath(self.dest)
-        if self.site == "CERN":
-            if self.dest.startswith('/store/'): self.dest = 'root://eoscms//eos/cms'+self.dest
-            if self.dest.startswith('root://'):
-                self.transferCmd = '"xrdcp "'
-            #elif self.dest != os.path.abspath(self.jobDir):
-            else:
-                self.transferCmd = "mv "
-        elif self.site == "KISTI":
-            if self.dest.startswith('/store/'): self.dest = 'root://cms-xrdr.sdfarm.kr:1094///xrd/%s' % self.dest
-            if self.dest.startswith('root://'):
-                self.transferCmd = 'xrdcp '
-            else:
-                self.transferCmd = "" ## Output file transfer to working directory is done by CONDOR. /cms/scratch is not supporting now.
+
+        if self.dest.startswith('/store/'):
+            if self.site == "CERN":
+                self.dest = 'root://eoscms//eos/cms'+self.dest
+            elif self.site == "KISTI":
+                self.dest = 'root://cms-xrdr.sdfarm.kr:1094///xrd/%s' % self.dest
+            elif self.site == "UOS":
+                self.dest = 'root://xrdr:1094///xrootd/%s' % self.dest
+                
+        if self.dest.startswith('root://'):
+            self.transferCmd = '"xrdcp "'            
         else:
             ## Default transfer command by simple copy command
             self.transferCmd = "mv "
