@@ -19,15 +19,16 @@ else
     fi
     if [ ! -d ~/.lumiCalc/Normtags ]; then
         echo "!!! Cannot find normtags. Copying files to ~/.lumiCalc"
-        [ -d ~/.lumiCalc ] || mkdir ~/.lumiCalc
-        scp -r lxplus.cern.ch:/afs/cern.ch/user/l/lumipro/public/Normtags ~/.lumiCalc
+        mkdir -p ~/.lumiCalc/Normtags
+        scp lxplus.cern.ch:/afs/cern.ch/user/l/lumipro/public/Normtags/*.json ~/.lumiCalc/Normtags/
     fi
     BRILPATH=~/.lumiCalc/brilconda/bin
     TAGPATH=~/.lumiCalc/Normtags
-    BRILOPTS="$BRILOPTS -c web"
 
     if [ -f /cvmfs/cms.cern.ch/SITECONF/local/JobConfig/site-local-config.xml ]; then
         BRILOPTS="$BRILOPTS -c /cvmfs/cms.cern.ch/SITECONF/local/JobConfig/site-local-config.xml"
+    else
+        BRILOPTS="$BRILOPTS -c web"
     fi
 fi
 
