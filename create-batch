@@ -65,7 +65,7 @@ class TheSiteConfig:
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
             self.scheduler = "CONDOR"
-            self.xrdSrv = 'xrdr:1094/'
+            self.xrdSrv = 'xrdr/'
             self.xrdBase = '/xrootd'
             self.localBase = '/xrootd_UOS/store/user/%s' % userName
         elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
@@ -97,7 +97,7 @@ class TheSiteConfig:
         if self.dest.startswith('/store/'): self.dest = 'root://%s/%s%s' % (self.xrdSrv, self.xrdBase, self.dest)
         ## Make absolute path
         if '://' not in self.dest: self.dest = os.path.abspath(self.dest)
-        self.transferCmd = 'xrdcp' if self.dest.startswith('root://') else 'mv'
+        self.transferCmd = 'xrdcp -d 1 -f' if self.dest.startswith('root://') else 'mv'
 
         ## Determine submit command
         if self.scheduler == "CONDOR":
@@ -238,7 +238,7 @@ class TheJobConfig:
             os.makedirs(dest)
             if self.config.site == "KISTI": os.system("chmod go+w %s" % dest)
 
-        elif self.config.transferCmd == 'xrdcp':
+        elif 'xrdcp' in self.config.transferCmd:
             print "@@ Preparing output directory in", self.config.dest, "..."
 
             destStorage, destDir = self.config.dest[7:].split('/',1)
@@ -389,21 +389,21 @@ fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_o
 for FILE in %s; do
     EXT=${FILE##*.}
     PREFIX=${FILE%%.${EXT}}
-    TRANSFERCMD=%s
+    TRANSFERCMD=(%s)
     DESTDIR=%s
-    echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
-    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+    echo ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+    ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        echo ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        echo ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        echo ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.dest)
         print>>fout, "echo FINISHED `date` >> %s/submit.log" % self.jobDir
@@ -489,18 +489,18 @@ fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_o
 for FILE in %s; do
     EXT=${FILE##*.}
     PREFIX=${FILE%%.${EXT}}
-    TRANSFERCMD=%s
+    TRANSFERCMD=(%s)
     DESTDIR=%s
-    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+    ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
 done
 
@@ -585,18 +585,19 @@ fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_o
 for FILE in %s; do
     EXT=${FILE##*.}
     PREFIX=${FILE%%.${EXT}}
-    TRANSFERCMD=%s
+    TRANSFERCMD=(%s)
     DESTDIR=%s
-    ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+    ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. retry in 5 seconds"
         sleep 5
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        echo "trying: " ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
     if [ $? -ne 0 ]; then
         echo "Failed to copy file.. (trial2) retry in 30 seconds"
         sleep 30
-        ${TRANSFERCMD} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
+        ${TRANSFERCMD[@]} ${FILE} ${DESTDIR}/${PREFIX}_${FSECTION}.${EXT}
     fi
 done""" % (' '.join(self.outFileNames), self.config.transferCmd, self.config.dest)
         print>>fout, "echo FINISHED `date` # >> %s/submit.log" % self.jobDir
