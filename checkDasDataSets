@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+import Utilities.General.cmssw_das_client as das_client
+import os, glob, sys
+
+startdir = sys.argv[1]
+
+storestart = startdir.find('/store')
+basedir = startdir[0:storestart]
+
+datasets = []
+datapaths = glob.glob(startdir+'/*/*/*/*')
+for i in datapaths:
+    j = i.replace(startdir,'')
+    a = j.split('/')
+    
+    datanset = '/'+a[1]+'/'+a[0]+'-'+a[3]+'/'+a[2]
+    print datanset
+    if 'RAW' in datanset:
+        continue
+
+    dasQuery = 'file dataset='+datanset
+    dasData = das_client.get_data(dasQuery, 0)
+    
+    for d in dasData['data']:
+        filename = d['file'][0]['name']
+        filesize = d['file'][0]['size']
+        localfile = basedir+filename
+        # check local file status
+        if not os.path.isfile(localfile):
+            print 'file not present yet',localfile
+            localsize = 0
+        else:
+            localsize = os.path.getsize(localfile)
+        if (filesize - localsize) is not 0:
+            print localfile
+            print 'remote=',filesize, 'local=',localsize
+            copycmd = 'xrdcp -d 1 -f root://cmsxrootd.fnal.gov/'+filename+' '+basedir+filename
+            print copycmd
+            os.system(copycmd)
+
