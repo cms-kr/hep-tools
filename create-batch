@@ -636,11 +636,12 @@ transfer_input_files = job.tar.gz""".format(self.jobName.replace('/','_'))
 
         ## Special care for the Singularity environment at KISTI
         if self.config.site == "KISTI":
+            osgVersion = "osgvo-el%s" % os.environ["SCRAM_ARCH"].split('_',1)[0][:-1]
             print>>jdlOut, '''
 accounting_group=group_cms
 +Tag = "create-batch v%s"
-+SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
-+SingularityBind = "/cvmfs, /cms, /share"''' % (version)
++SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/%s:latest"
++SingularityBind = "/cvmfs, /cms, /share"''' % (version, osgVersion)
             requirements.append("HasSingularity == true")
 
         if len(self.blacklist) > 0:
