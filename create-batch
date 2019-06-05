@@ -253,8 +253,9 @@ class TheJobConfig:
                 os.system("export LD_PRELOAD=/usr/lib64/libXrdPosixPreload.so; mkdir %s" % dest)
                 
             else:
-                print "gfal-mkdir %s" % dest
-                os.system("gfal-mkdir %s" % dest)
+                if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
+                print "gfal-mkdir gsiftp://cms-se.sdfarm.kr//xrootd/%s" % (destDir)
+                os.system("gfal-mkdir gsiftp://cms-se.sdfarm.kr//xrootd/%s" % destDir)
 
         if hasattr(self, 'process'):
             ## Load cfg file
