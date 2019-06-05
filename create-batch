@@ -85,6 +85,7 @@ class TheSiteConfig:
             self.xrdSrv = 'cms-xrdr.private.lo:2094/'
             self.xrdBase = '/xrd'
             self.localBase = '/xrootd_user/%s/xrootd' % userName
+            self.mkdirCmd = "gfal-mkdir gsiftp://cms-se.sdfarm.kr//xrootd"
         else:
             print "!!! This site is not supported"
             sys.exit()
@@ -248,14 +249,14 @@ class TheJobConfig:
                 if not os.path.exists("%s/%s" % (self.config.localBase, destDir)):
                     os.makedirs("%s/%s" % (self.config.localBase, destDir))
                     
-            elif self.config.site == "UOS":
+            elif self.config.site in ("UOS", "KISTI"):
                 print "mkdir %s" % dest
                 os.system("export LD_PRELOAD=/usr/lib64/libXrdPosixPreload.so; mkdir %s" % dest)
                 
-            else:
+            elif hasattr(self.config, 'mkdirCmd'):
                 if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
-                print "gfal-mkdir gsiftp://cms-se.sdfarm.kr//xrootd/%s" % (destDir)
-                os.system("gfal-mkdir gsiftp://cms-se.sdfarm.kr//xrootd/%s" % destDir)
+                print self.config.mkdirCmd+destDir
+                os.system(self.config.mkdirCmd+destDir)
 
         if hasattr(self, 'process'):
             ## Load cfg file
