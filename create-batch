@@ -39,6 +39,7 @@ def usage():
     print "   --customise CUSTOMISE_cfg.py     Configuration file for customization"
     print "   --args                           general arguments"
     print "   --firstRun N                     For MC: run number"
+    print "   -B                               Rebuild whole package before job starts"
     print "  Optional, condor-specific :"
     print "   --blacklist HOST1,HOST2,...      Remove specific hosts"
     print "   --whitelist HOST1,HOST2,...      Remove specific hosts"
@@ -117,6 +118,7 @@ class TheJobConfig:
         self.doSubmit = ('-n' not in opts) ## Submit jobs by default unless -n is given
         self.doGrid = ('-G' not in opts) ## Carry the grid certificate by default unless -G is given
         self.doArchive = ('-T' in opts)
+        self.doRebuild = ('-b' in opts)
 
         self.blacklist = opts['--blacklist'].split(',') if '--blacklist' in opts else []
         self.whitelist = opts['--whitelist'].split(',') if '--whitelist' in opts else []
@@ -248,11 +250,11 @@ class TheJobConfig:
                 if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
                 if not os.path.exists("%s/%s" % (self.config.localBase, destDir)):
                     os.makedirs("%s/%s" % (self.config.localBase, destDir))
-                    
+
             elif self.config.site in ("UOS", "KISTI"):
                 print "mkdir %s" % dest
                 os.system("export LD_PRELOAD=/usr/lib64/libXrdPosixPreload.so; mkdir %s" % dest)
-                
+
             elif hasattr(self.config, 'mkdirCmd'):
                 if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
                 print self.config.mkdirCmd+destDir
@@ -359,22 +361,26 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 cd $CMSSW_BASE/src
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+        if self.doRebuild:
+            print>>fout, """
 scram build clean
-scram build vclean
+scram build vclean"""
+        print>>fout, """
 scram build -j
 cd -
 eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
-echo BEGIN `date` {4} {3} >> {0}/submit.log
-echo {4} {3}
+echo BEGIN `date` {2} {1} >> {0}/submit.log
+echo {2} {1}
 touch ___started___job___
-time {4} {3}
+time {2} {1}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
-    echo ENDED `date` {4} {3} >> {0}/submit.log
-""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+    echo ENDED `date` {2} {1} >> {0}/submit.log
+""".format(self.jobDir, self.additional_options, self.cmd)
         if self.doArchive:
             print>>fout, """
     tar -czf ../result_{0}.tgz -N "`date -r ___started___job___`" .
@@ -384,9 +390,9 @@ if [ $EXITCODE == 0 ]; then
         print>>fout, """
 else
     rm -f core.*
-    echo TERMINATED_$EXITCODE `date` {4} {3} >> {0}/submit.log
+    echo TERMINATED_$EXITCODE `date` {2} {1} >> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+fi""".format(self.jobDir, self.additional_options, self.cmd)
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
@@ -458,22 +464,26 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 cd $CMSSW_BASE/src
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+        if self.doRebuild:
+            print>>fout, """
 scram build clean
-scram build vclean
+scram build vclean"""
+        print>>fout, """
 scram build -j
 cd -
 eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
 fi
-echo BEGIN `date` {4} {3} >> {0}/submit.log
-echo {4} {3}
+echo BEGIN `date` {2} {1} >> {0}/submit.log
+echo {2} {1}
 touch ___started___job___
-time {4} {3}
+time {2} {1}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
-    echo ENDED `date` {4} {3} >> {0}/submit.log
-""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+    echo ENDED `date` {2} {1} >> {0}/submit.log
+""".format(self.jobDir, self.additional_options, self.cmd)
         if self.doArchive:
             print>>fout, """
     tar -czf ../result_{0}.tgz -N "`date -r ___started___job___`" .
@@ -483,10 +493,10 @@ if [ $EXITCODE == 0 ]; then
         print>>fout, """
 else
     rm -f core.*
-    echo TERMINATED_$EXITCODE `date` {4} {3} >> {0}/submit.log
+    echo TERMINATED_$EXITCODE `date` {2} {1} >> {0}/submit.log
     rm -rf /tmp/${{USER}}/PBS_${{PBS_JOBID}}
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+fi""".format(self.jobDir, self.additional_options, self.cmd)
         print>>fout, """
 for FILE in %s; do
     EXT=${FILE##*.}
@@ -552,8 +562,12 @@ cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
 cd $CMSSW_BASE/src
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+        if self.doRebuild:
+            print>>fout, """
 scram build clean
-scram build vclean
+scram build vclean"""
+        print>>fout, """
 scram build -j
 cd -
 eval `scram runtime -sh`
@@ -562,14 +576,14 @@ if [ -f $CMSSW_BASE/proxy.x509 ]; then
 fi
 """.format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options)
         print>>fout,"""
-echo BEGIN `date` {4} {3} #>> {0}/submit.log
-echo {4} {3}
+echo BEGIN `date` {2} {1} #>> {0}/submit.log
+echo {2} {1}
 touch ___started___job___
-time {4} {3}
+time {2} {1}
 EXITCODE=$?
 if [ $EXITCODE == 0 ]; then
-    echo ENDED `date` {4} {3} #>> {0}/submit.log
-""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+    echo ENDED `date` {2} {1} #>> {0}/submit.log
+""".format(self.jobDir, self.additional_options, self.cmd)
         if self.doArchive:
             print>>fout, """
     tar -czf ../result_{0}.tgz -N "`date -r ___started___job___`" .
@@ -579,9 +593,9 @@ if [ $EXITCODE == 0 ]; then
         print>>fout,"""
 else
     rm -f core.*
-    echo TERMINATED_$EXITCODE `date` {4} {3} #>> {0}/submit.log
+    echo TERMINATED_$EXITCODE `date` {2} {1} #>> {0}/submit.log
     exit 1
-fi""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'],self.additional_options, self.cmd)
+fi""".format(self.jobDir, self.additional_options, self.cmd)
         if self.config.transferCmd != '':
             print>>fout, """
 for FILE in %s; do
