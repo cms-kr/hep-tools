@@ -65,9 +65,9 @@ class TheSiteConfig:
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
             self.scheduler = "CONDOR"
-            self.xrdSrv = 'xrdr/'
-            self.xrdBase = '/xrootd'
-            self.localBase = '/xrootd_UOS/store/user/%s' % userName
+            #self.xrdSrv = 'xrdr/'
+            #self.xrdBase = '/xrootd'
+            self.localBase = '/hdfs/store/user/%s' % userName
         elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
             self.site = "CCP"
             self.scheduler = "PBS"
@@ -235,8 +235,9 @@ class TheJobConfig:
         dest = self.config.dest
         if self.config.transferCmd == 'mv' and not os.path.exists(dest):
             print "@@ Preparing output scratch directory in", dest, "..."
-            os.makedirs(dest)
-            if self.config.site == "KISTI": os.system("chmod go+w %s" % dest)
+            os.system("mkdir -p %s" % dest)
+            os.system("chmod go+w %s" % dest)
+            #os.makedirs(dest)
 
         elif 'xrdcp' in self.config.transferCmd:
             print "@@ Preparing output directory in", self.config.dest, "..."
@@ -448,6 +449,7 @@ fi
 source $CMS_PATH/cmsset_default.sh
 
 hostname
+whoami
 ## Prepare workdirectory
 mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
@@ -545,6 +547,7 @@ fi
 source $CMS_PATH/cmsset_default.sh
 
 hostname
+whoami
 tar xzf job.tar.gz
 cd {1}
 scram build ProjectRename

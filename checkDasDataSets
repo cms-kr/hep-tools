@@ -4,11 +4,13 @@ import os, glob, sys
 
 startdir = sys.argv[1]
 
-storestart = startdir.find('/store')
-basedir = startdir[0:storestart]
+basedir = startdir[0:startdir.find('/store')]
 
 datasets = []
-datapaths = glob.glob(startdir+'/*/*/*/*')
+fullsearchpath = startdir+'/*/*/*/*'
+print fullsearchpath
+datapaths = glob.glob(fullsearchpath)
+
 for i in datapaths:
     j = i.replace(startdir,'')
     a = j.split('/')
