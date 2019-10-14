@@ -574,6 +574,7 @@ scram build vclean"""
         print>>fout, """
 scram build -j
 cd -
+cd {1}
 eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
