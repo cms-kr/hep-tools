@@ -562,10 +562,11 @@ hostname
 whoami
 tar xzf job.tar.gz
 cd {1}
-cd $CMSSW_BASE/src
+cd -
+cd {3}/src
 scram build ProjectRename
 eval `scram runtime -sh`
-""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'], os.environ['CMSSW_VERSION'])
         if self.doRebuild:
             print>>fout, """
 scram build clean
