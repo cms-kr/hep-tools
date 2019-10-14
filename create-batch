@@ -695,7 +695,6 @@ accounting_group=group_cms
                  + exclCommon + " --exclude-tag-all=.create-batch ")
         os.system("tar rf {0}/job.tar {1}/src/*/*/python {1}/src/*/*/interface {1}/src/*/*/src {1}/src/*/*/plugins {1}/src/*/*/BuildFile* --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude-tag-all=.create-batch ")
-        print os.path.basename(self.jobDir), self.jobDir, self.cmsswBase
         if self.cmsswBase in self.jobDir:
             os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}::' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), os.path.basename(self.jobDir))
                       + exclCommon + " --exclude=*.root")
