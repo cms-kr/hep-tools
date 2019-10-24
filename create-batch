@@ -19,7 +19,7 @@ def usage():
     print sys.argv[0], " : create pbs/condor jobs"
     print " Usage: create-batch cmsRun --cfg CONFIG_cfg.py --jobName JOBNAME --fileList fileList.txt --maxFiles MAXFILE"
     print ""
-    print "        create-batch bash --cfg YOUR_BASH_script.sh --jobName JOBNAME --nJobs NJOBS --transferFiles YOUR_OUTPUT_FILES"
+    print "        create-batch bash YOUR_BASH_script.sh YOUR OTHER ARGUMENTS --jobName JOBNAME --nJobs NJOBS --transferFiles YOUR_OUTPUT_FILES"
     print ""
     print "  Mandatory options :"
     print "   --jobName  NAME                  Name of job"
