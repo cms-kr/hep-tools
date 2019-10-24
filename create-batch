@@ -562,10 +562,11 @@ hostname
 whoami
 tar xzf job.tar.gz
 cd {1}
+cd -
+cd {3}/src
 scram build ProjectRename
 eval `scram runtime -sh`
-cd $CMSSW_BASE/src
-""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'])
+""".format(self.jobDir, self.jobBase, os.environ['CMS_PATH'], os.environ['CMSSW_VERSION'])
         if self.doRebuild:
             print>>fout, """
 scram build clean
@@ -573,6 +574,7 @@ scram build vclean"""
         print>>fout, """
 scram build -j
 cd -
+cd {1}
 eval `scram runtime -sh`
 if [ -f $CMSSW_BASE/proxy.x509 ]; then
     export X509_USER_PROXY=$CMSSW_BASE/proxy.x509
@@ -695,9 +697,14 @@ accounting_group=group_cms
                  + exclCommon + " --exclude-tag-all=.create-batch ")
         os.system("tar rf {0}/job.tar {1}/src/*/*/python {1}/src/*/*/interface {1}/src/*/*/src {1}/src/*/*/plugins {1}/src/*/*/BuildFile* --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
                  + exclCommon + " --exclude-tag-all=.create-batch ")
-        os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}::' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), os.path.basename(self.jobDir))
-                 + exclCommon + " --exclude=*.root")
+        if self.cmsswBase in self.jobDir:
+            os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}::' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), os.path.basename(self.jobDir))
+                      + exclCommon + " --exclude=*.root")
+        else:
+            os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}:{4}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), self.jobDir, self.jobBase)
+                      + exclCommon + " --exclude=*.root")
 
+        
         ## Checking voms proxy
         if self.doGrid:
             print "@@ Checking grid certificate to access files..."
