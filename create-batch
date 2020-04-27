@@ -66,9 +66,10 @@ class TheSiteConfig:
         elif 'sscc.uos' in hostName:
             self.site = "UOS"
             self.scheduler = "CONDOR"
-            #self.xrdSrv = 'xrdr/'
-            #self.xrdBase = '/xrootd'
-            self.localBase = '/hdfs/store/user/%s' % userName
+            #self.xrdSrv = 'cmsxrootd.sscc.uos.ac.kr/'
+            #self.xrdBase = '/'
+            self.mkdirCmd = "hadoop fs -mkdir -p "
+            #self.localBase = ''
         elif hostName.startswith('ccp'): ## CCP should be BEFORE KNU T2/T3
             self.site = "CCP"
             self.scheduler = "PBS"
@@ -96,11 +97,17 @@ class TheSiteConfig:
         ## Determine transfer command, default transfer command by simple mv command
         ## NOTE: kwargs['dest'] must be given in this script. exception in this line means there's unexpected modification
         self.dest = kwargs['dest']
-        if self.dest.startswith('/store/'): self.dest = 'root://%s/%s%s' % (self.xrdSrv, self.xrdBase, self.dest)
+        if self.dest.startswith('/store/') and not 'sscc.uos' in hostName: self.dest = 'root://%s/%s%s' % (self.xrdSrv, self.xrdBase, self.dest)
+        if self.dest.startswith('/hdfs/') and 'sscc.uos' in hostName:
+            self.dest = self.dest.replace('/hdfs','')
+            
         ## Make absolute path
         if '://' not in self.dest: self.dest = os.path.abspath(self.dest)
         self.transferCmd = 'xrdcp -d 1 -f' if self.dest.startswith('root://') else 'mv'
-
+        # hadoop copy for uos
+        if  'sscc.uos' in hostName:
+            self.transferCmd = 'hadoop fs -put'
+        
         ## Determine submit command
         if self.scheduler == "CONDOR":
             self.submitCmd = 'condor_submit submit.jds'
@@ -251,8 +258,8 @@ class TheJobConfig:
                 if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
                 if not os.path.exists("%s/%s" % (self.config.localBase, destDir)):
                     os.makedirs("%s/%s" % (self.config.localBase, destDir))
-
-            elif self.config.site in ("UOS", "KISTI"):
+                                    
+            elif self.config.site in ("KISTI"):
                 print "mkdir %s" % dest
                 os.system("export LD_PRELOAD=/usr/lib64/libXrdPosixPreload.so; mkdir %s" % dest)
 
@@ -289,7 +296,11 @@ class TheJobConfig:
 
             for f in outFileModes.values():
                 f = re.sub(r'^file:', '', f)
-                self.outFileNames.append(f)
+                if self.config.site in ("UOS"):
+                    self.outFileNames.append(f)
+                else :
+                    self.outFileNames.append(f)
+
 
             pklFileName = "%s/job_cfg.pkl" % (self.jobDir)
             cPickle.dump(process, open(pklFileName, "w"))
