@@ -258,11 +258,6 @@ class TheJobConfig:
                 if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
                 if not os.path.exists("%s/%s" % (self.config.localBase, destDir)):
                     os.makedirs("%s/%s" % (self.config.localBase, destDir))
-                                    
-            elif self.config.site in ("KISTI"):
-                print "mkdir %s" % dest
-                os.system("export LD_PRELOAD=/usr/lib64/libXrdPosixPreload.so; mkdir %s" % dest)
-
             elif hasattr(self.config, 'mkdirCmd'):
                 if '/store/' in destDir: destDir = '/store/'+destDir.split('/store/', 1)[-1]
                 print self.config.mkdirCmd+destDir
@@ -679,8 +674,7 @@ transfer_input_files = job.tar.gz""".format(self.jobName.replace('/','_'))
             print>>jdlOut, '''
 accounting_group=group_cms
 +Tag = "create-batch v%s"
-+SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/%s:latest"
-+SingularityBind = "/cvmfs, /cms, /share"''' % (version, osgVersion)
++SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/%s:latest"'''% (version, osgVersion)
             requirements.append("HasSingularity == true")
 
         if len(self.blacklist) > 0:
