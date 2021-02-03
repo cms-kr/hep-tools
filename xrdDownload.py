@@ -64,7 +64,7 @@ class xrdDownload():
         usage="Usage: xrdDownload.py [options] \n(ex) xrdDownload.py -i datalist.txt -p 4"
         parser = OptionParser(usage)
         parser.add_option("-i", "--infile", dest="listfile",default="datalist.txt",help="A list file which includes the input files.")
-        parser.add_option("-p", "--parallel", dest="nparallel",default=4, help="Number of Session for simulatanly.")
+        parser.add_option("-p", "--parallel", dest="nparallel",default=4, help="number of copy jobs to be run simultaneously")
         (options, args) = parser.parse_args()
         self.nparallel = int(options.nparallel)
         self.readList(options.listfile)
