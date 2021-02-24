@@ -104,7 +104,7 @@ class XrdMigration:
             if srcHash==destHash:
                 print("Hash is corrected.")
                 if self.delete_flag:
-                    cmd = "rm %s"%(src)
+                    cmd = "rm -f %s"%(src)
                     print("Removed copied file.(%s)"%(src))
                     os.system(cmd)
         for sdir in self.srcdirs:
