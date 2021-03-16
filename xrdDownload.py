@@ -55,6 +55,9 @@ class xrdDownload():
         if ( "sdfarm.kr" not in self.hostname):
             print("This server is not KISTI.")
             sys.exit(-1)
+        if ( "CMSSW_BASE" not in os.environ):
+            print("Please, \"cmsenv\" for this command.")
+            sys.exit(-1)
         if (os.system("voms-proxy-info -exist -valid 8:0") !=0):
             os.system("voms-proxy-init --voms cms")
         self.parseOptions()
