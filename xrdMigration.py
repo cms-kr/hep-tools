@@ -13,6 +13,8 @@ def subprocess_open(command):
     return stdoutdata, stderrdata
 
 class XrdMigration:
+    options = None
+    args = None
     def __init__(self):
         self.localid = getpass.getuser()
         self.source=[]
@@ -69,6 +71,7 @@ class XrdMigration:
                 self.getDestDir()
             else:
                 print("Wrong arguments.")
+                sys.exit(-1)
         else:
             if( len(args) ==1 or len(args)==2 ):
                 for infile in Path(args[0]).rglob("*"):
@@ -85,13 +88,19 @@ class XrdMigration:
                 print("Set destination : %s"%(self.dest))
             else:
                 print("Wrong arguments.")
-                print("Option and arguments are")
                 self.printOptions()
+                print("")
+                parser.print_help()
+                sys.exit(-4)
         self.options = options
         self.args = args
     def printOptions(self):
-        print("options : ",self.options)
-        print("args : ",self.args)
+        if ( self.options is not None or self.args is not None):
+            print("Option and arguments are")
+        if ( self.options is not None):
+            print("options : ",self.options)
+        if ( self.args is not None):
+            print("args : ",self.args)
     def doMigration(self):
         for idx, src in enumerate(self.source):
             cmd = "xrdcp -p %s %s"%(src,self.dest[src])
@@ -105,7 +114,7 @@ class XrdMigration:
                 print("Hash is corrected.")
                 if self.delete_flag:
                     cmd = "rm -f %s"%(src)
-                    print("Removed copied file.(%s)"%(src))
+                    print("Removed the copied file.(%s)"%(src))
                     os.system(cmd)
         for sdir in self.srcdirs:
             destdir = self.destdir[sdir]
@@ -146,5 +155,8 @@ class XrdMigration:
         self.printSource()
         self.printDest()
 if __name__ == "__main__":
+    if (sys.version_info.minor <6):
+        print("Python version is lower than 3.6.")
+        sys.exit(-2)
     xm = XrdMigration()
     xm.doMigration()
