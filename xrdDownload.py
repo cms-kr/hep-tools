@@ -27,11 +27,16 @@ def subprocess_open(command):
 
 def migration(lfn):
     source = XRDFB+lfn
-    dest = XRDDEST+lfn
+    dest = XRDDEST+os.path.dirname(lfn)
+    xrd_locate = '/xrd'+lfn
+    xrd_dir = '/xrd'+os.path.dirname(lfn)
+    cmd = 'xrdfs cms-xrdr.private.lo:2094 rm %s'%(xrd_locate)
+    os.system(cmd)
 
     global g_total
     global g_success
     global g_fail
+
 
     print("Source: ",source)
     print("Destination: ",dest)
@@ -50,7 +55,7 @@ def migration(lfn):
 class xrdDownload():
     lfnsize={}
     target=[]
-    def __init__(self,filelist):
+    def __init__(self):
         self.hostname = socket.gethostname()
         if ( "sdfarm.kr" not in self.hostname):
             print("This server is not KISTI.")
@@ -67,17 +72,42 @@ class xrdDownload():
         usage="Usage: xrdDownload.py [options] \n(ex) xrdDownload.py -i datalist.txt -p 4"
         parser = OptionParser(usage)
         parser.add_option("-i", "--infile", dest="listfile",default="datalist.txt",help="A list file which includes the input files.")
+        parser.add_option("-f", "--force" , dest="force"   ,action="store_true", help ="force to copy(Default)")
         parser.add_option("-p", "--parallel", dest="nparallel",default=4, help="number of copy jobs to be run simultaneously")
+        parser.add_option("-v", "--verbose", dest="verbose",action="store_true", help="Verbose mode")
         (options, args) = parser.parse_args()
         self.nparallel = int(options.nparallel)
+        self.force = options.force
+        self.verbose = options.verbose
+        if ( self.verbose): 
+            print("Verbose mode is on.")
         self.readList(options.listfile)
     def readList(self,listfile):
         lines = open(listfile).readlines()
         for line in lines:
-            lfn, size = line.strip().split()
-            if( not lfn.startswith("/store")):
-                lfn = "/store"+lfn.split("/store")[-1]
-            self.lfnsize[lfn]= size
+            line_column = len(line.strip().split())
+
+            if( self.verbose) : 
+                print("Column size is %d"%(line_column))
+
+            if ( line_column == 2):
+                lfn, size = line.strip().split()
+                if( not lfn.startswith("/store")):
+                    lfn = "/store"+lfn.split("/store")[-1]
+                self.lfnsize[lfn] = size
+                if ( self.force ):
+                    self.lfnsize[lfn] = -1
+            elif (line_column == 1):
+                lfn = line.strip().split()[0]
+                if( not lfn.startswith("/store")):
+                    lfn = "/store"+lfn.split("/store")[-1]
+                self.lfnsize[lfn] = -1
+            else:
+                print("Wrong data file")
+                sys.exit(-1)
+        if ( self.verbose):
+            print( self.lfnsize.keys())
+
     def printTarget(self):
         print(self.target)
     def runDownload(self):
@@ -103,6 +133,10 @@ class xrdDownload():
                 print("missing file")
                 continue
             pfn_size = os.path.getsize(pnfs)
+            if ( self.force ): 
+                if( self.verbose):
+                    print("Verbose mode: Add %s to list"%(lfn))
+                    self.target.append(lfn)
             if ( int(pfn_size) == int(self.lfnsize[lfn])):
                 pass
             else:
@@ -115,6 +149,6 @@ if __name__ == '__main__':
 
     lfn_list=[]
     failed_list=[]
-    xrdDownload("datalist.txt")
+    xrdDownload()
         
 
