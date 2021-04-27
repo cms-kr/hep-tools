@@ -129,18 +129,23 @@ class xrdDownload():
         for lfn in self.lfnsize.keys():
             pnfs = self.pnfsFileName(lfn)
             if( not os.path.isfile(pnfs)):
+                if( self.verbose):
+                    print("missing file %s"%(lfn))
                 self.target.append(lfn)
-                print("missing file")
                 continue
-            pfn_size = os.path.getsize(pnfs)
             if ( self.force ): 
                 if( self.verbose):
                     print("Verbose mode: Add %s to list"%(lfn))
-                    self.target.append(lfn)
+                self.target.append(lfn)
+                continue
+            pfn_size = os.path.getsize(pnfs)
             if ( int(pfn_size) == int(self.lfnsize[lfn])):
+                if(self.verbose):
+                    print("File is already existed. Skip this file.(%s)"%(lfn))
                 pass
             else:
-                print("Wrong size")
+                if(self.verbose):
+                    print("Wrong size of %s"%(lfn))
                 self.target.append(lfn)
 
 
