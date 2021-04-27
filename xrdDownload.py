@@ -5,7 +5,7 @@ from multiprocessing import Pool, Value
 from optparse import OptionParser
 
 
-XRDFB="root://cmsxrootd.fnal.gov/"
+XRDFB="root://cms-xrd-global.cern.ch/"
 XRDDEST="root://cms-xrdr.private.lo:2094//xrd/"
 
 
@@ -27,7 +27,7 @@ def subprocess_open(command):
 
 def migration(lfn):
     source = XRDFB+lfn
-    dest = XRDDEST+os.path.dirname(lfn)
+    dest = XRDDEST+lfn
     xrd_locate = '/xrd'+lfn
     xrd_dir = '/xrd'+os.path.dirname(lfn)
     cmd = 'xrdfs cms-xrdr.private.lo:2094 rm %s'%(xrd_locate)
@@ -40,7 +40,7 @@ def migration(lfn):
 
     print("Source: ",source)
     print("Destination: ",dest)
-    cmd = 'xrdcp -f %s %s'%(source ,dest)
+    cmd = 'xrdcp -p -f %s %s'%(source ,dest)
     return_value = os.system(cmd)
     if( return_value !=0 ):
         print("%s is failed."%(lfn))
@@ -72,7 +72,7 @@ class xrdDownload():
         usage="Usage: xrdDownload.py [options] \n(ex) xrdDownload.py -i datalist.txt -p 4"
         parser = OptionParser(usage)
         parser.add_option("-i", "--infile", dest="listfile",default="datalist.txt",help="A list file which includes the input files.")
-        parser.add_option("-f", "--force" , dest="force"   ,action="store_true", help ="force to copy(Default)")
+        parser.add_option("-f", "--force" , dest="force"   ,action="store_true", default=False, help ="force to copy")
         parser.add_option("-p", "--parallel", dest="nparallel",default=4, help="number of copy jobs to be run simultaneously")
         parser.add_option("-v", "--verbose", dest="verbose",action="store_true", help="Verbose mode")
         (options, args) = parser.parse_args()
