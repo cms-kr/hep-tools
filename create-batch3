@@ -12,7 +12,7 @@ import stat, shutil
 from getopt import gnu_getopt as getopt
 from math import ceil
 from datetime import datetime
-import imp
+import importlib.util
 import pickle
 
 def usage():
@@ -42,8 +42,15 @@ def usage():
     print("   -B                               Rebuild whole package before job starts")
     print("  Optional, condor-specific :")
     print("   --blacklist HOST1,HOST2,...      Remove specific hosts")
-    print("   --whitelist HOST1,HOST2,...      Remove specific hosts")
+    print("   --whitelist HOST1,HOST2,...      Use specific hosts")
     sys.exit()
+
+def load_source(module, path):
+    spec = importlib.util.spec_from_file_location("module.name", "/path/to/file.py")
+    foo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(foo)
+    return(foo)
+
 
 import FWCore.ParameterSet.Config as cms
 class TheSiteConfig:
@@ -158,7 +165,7 @@ class TheJobConfig:
             sys.argv=[]
             sys.argv.extend(self.cmd.split())
             sys.argv.extend(self.additional_options.split())
-            self.process = imp.load_source("process", self.cfgFileName).process
+            self.process = load_source("process", self.cfgFileName).process
             sys.stdout = cout
             source = self.process.source
             if source.type_() == "EmptySource":
@@ -213,7 +220,7 @@ class TheJobConfig:
             if '--customise' in opts:
                 customiseFile = opts['--customise']
                 if os.path.exists(customiseFile):
-                    tmpObj = imp.load_source('customise', customiseFile)
+                    tmpObj = load_source('customise', customiseFile)
                     if hasattr(tmpObj, 'customise'): self.customise = tmpObj.customise
                     else: print("Cannot find customise(process) function in the cfg ", customiseFile)
 
