@@ -31,7 +31,14 @@ rm $output
 for line in $datasets
 do
     echo $line
-    dasgoclient --query="file dataset=$line instance=prod/phys03|grep file.name,file.size" >> $output
+    DATASET_TYPE=${line:(-4)}
+    if [ ${DATASET_TYPE} == "USER" ]; then
+        echo "Private Datasets!"
+        dasgoclient --query="file dataset=$line instance=prod/phys03 |grep file.name,file.size" >> $output
+    else
+        echo "Global Datasets!"
+        dasgoclient --query="file dataset=$line |grep file.name,file.size" >> $output
+    fi
 done
 
 
