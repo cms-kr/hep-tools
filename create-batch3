@@ -46,7 +46,7 @@ def usage():
     sys.exit()
 
 def load_source(module, path):
-    spec = importlib.util.spec_from_file_location("module.name", "/path/to/file.py")
+    spec = importlib.util.spec_from_file_location(module, path)
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
     return(foo)
@@ -304,8 +304,8 @@ class TheJobConfig:
                     self.outFileNames.append(f)
 
 
-            pklFileName = "%s/job_cfg.pkl" % (self.jobDir)
-            pickle.dump(process, open(pklFileName, "w"))
+            with open("%s/job_cfg.pkl" % (self.jobDir),"wb") as pklFileName:
+                pickle.dump(process, pklFileName)
 
             ## Split files into jobs and write python cfg
             print("@@ Splitting jobs...")
