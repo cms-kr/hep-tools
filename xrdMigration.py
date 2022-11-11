@@ -6,6 +6,7 @@ from optparse import OptionParser
 import socket
 import getpass
 from pathlib import Path
+import glob
 
 def subprocess_open(command):
     popen = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -13,25 +14,34 @@ def subprocess_open(command):
     return stdoutdata, stderrdata
 
 class XrdMigration:
+    localid = None
+    source = []
+    srcdirs = []
+    dest = {}
+    destdir = {}
+    destprepend=""
+    hostname = None
     options = None
     args = None
+    nFiles = 0
     def __init__(self):
         self.localid = getpass.getuser()
-        self.source=[]
-        self.srcdirs=[]
-        self.dest={}
-        self.destdir={}
         self.hostname = socket.gethostname()
         self.parseOptions()
-        self.nFiles=0
     def parseOptions(self):
-        usage="Usage: xrdMigration.py [options] [source dir]\n(ex) xrdMigration.py -d -c geonmo /cms/ldap_home/geonmo/migration_test/"
+        usage="Usage: xrdMigration.py [options] [source dir]\n"
+        usage+="(ex) xrdMigration.py -d -c geonmo -t xrdUpload /cms/ldap_home/geonmo/migration_test/\n"
+        usage+="/cms/ldap_home/geonmo/migration_test => /xrootd/store/user/geonmo/xrdUpload/migration_test"
         parser = OptionParser(usage)
-        parser.add_option("-f", "--file", dest="listfile",help="A list file which includes the input files.(Not yet)")
+        parser.add_option("-f", "--file", dest="listfile",help="A list file which includes the input files.")
+        parser.add_option("-t", "--dest", dest="destprepend",default="",help="Path of the Destination directory")
         parser.add_option("-c", "--cernid", dest="cernid",help="Input your CERN username. (Default) Query from CRIC.")
         parser.add_option("-d", "--delete", dest="delete",action="store_true",default= False, help="Delete copied files. (Default) False")
+        parser.add_option("-n", "--dryrun", dest="dryrun",action="store_true",default= False, help="Dry Run")
         (options, args) = parser.parse_args()
         self.delete_flag= options.delete
+        self.destprepend=options.destprepend
+        self.dryrun=options.dryrun
         ## Get CERN Account name
         if options.cernid == None:
             self.getCernId()
@@ -63,28 +73,24 @@ class XrdMigration:
                         self.source.append(infile)
             self.nFiles = len(self.source)
             print("Number of files is %d\n"%(self.nFiles))
-            if ( len(args) == 0) :
-                for tofile in self.source:
-                    self.dest[tofile] = self.getDestDir() 
-            elif( len(args) == 1) :
-                self.dest_default = args[0]
-                self.getDestDir()
-            else:
-                print("Wrong arguments.")
-                sys.exit(-1)
+            self.setupDestDir()
         else:
             if( len(args) ==1 or len(args)==2 ):
-                for infile in Path(args[0]).rglob("*"):
-                    if os.path.isdir(infile):
-                        self.srcdirs.append(infile)
-                    elif os.path.isfile(infile):
-                        self.source.append(infile)
+                print(f"args : {args[0]}")
+                self.srcdirs.append(args[0])
+                for (path, dirs, files) in os.walk(args[0]):
+                    for dirname in dirs:
+                        self.srcdirs.append(path+'/'+dirname)
+                    for filename in files:
+                        self.source.append(path+'/'+filename)
                 print(self.srcdirs)
-                print("Number of files is %d\n"%(len(self.source)))
-                self.getDestDir()
+                print(self.source)
+                self.nFiles = len(self.source)
+                print(f"Number of files is {self.nFiles}")
+                self.setupDestDir()
             elif( len(args) == 2) :
                 self.dest_default = args[1]
-                self.getDestDir()
+                self.setupDestDir()
                 print("Set destination : %s"%(self.dest))
             else:
                 print("Wrong arguments.")
@@ -102,31 +108,36 @@ class XrdMigration:
         if ( self.args is not None):
             print("args : ",self.args)
     def doMigration(self):
+        if ( self.nFiles==0):
+            print("No file copied. Terminate program.")
         for idx, src in enumerate(self.source):
             cmd = "xrdcp -p %s %s"%(src,self.dest[src])
-            print("Copying file (%d/%d)"%(idx,self.nFiles))
-            os.system(cmd)
-            out, err = subprocess_open("xrdadler32 %s"%(src))
-            srcHash  = out.decode('utf-8').split()[0]
-            out, err = subprocess_open("xrdadler32 %s"%(self.dest[src]))
-            destHash = out.decode('utf-8').split()[0]
-            if srcHash==destHash:
-                print("Hash is corrected.")
-                if self.delete_flag:
-                    cmd = "rm -f %s"%(src)
-                    print("Removed the copied file.(%s)"%(src))
-                    os.system(cmd)
+            print("Copying file (%d/%d)"%(idx+1,self.nFiles))
+            print(cmd)
+            if not self.dryrun:
+                os.system(cmd)
+                out, err = subprocess_open("xrdadler32 %s"%(src))
+                srcHash  = out.decode('utf-8').split()[0]
+                out, err = subprocess_open("xrdadler32 %s"%(self.dest[src]))
+                destHash = out.decode('utf-8').split()[0]
+                if srcHash==destHash:
+                    print("Hash is corrected.")
+                    if self.delete_flag:
+                        cmd = "rm -f %s"%(src)
+                        print("Removed the copied file.(%s)"%(src))
+                        os.system(cmd)
         for sdir in self.srcdirs:
             destdir = self.destdir[sdir]
             cmd = "xrdfs cms-xrdr.private.lo:2094 locate -r %s"%(destdir)
             print("Refreshing directory cached(%s)"%(destdir))
-            os.system(cmd)
-    def getDestDir(self):
+            if not self.dryrun:
+                os.system(cmd)
+    def setupDestDir(self):
         for src in self.source:
             srcs = str(src)
             if( srcs.startswith("/cms/ldap_home") or srcs.startswith("/cms/scratch") or srcs.startswith("/cms_scratch")):
                 dirname = os.path.dirname(src).split(self.localid)[-1]
-                self.dest[src] = self.dest_default+dirname+ "/"+os.path.basename(src) 
+                self.dest[src] = f"{self.dest_default}/{self.destprepend}/{dirname}/{os.path.basename(src)}"
             else:
                 print("Wrong source location.")
                 sys.exit(-1)
@@ -134,7 +145,7 @@ class XrdMigration:
             srcdir_str = str(srcdir)
             if( srcdir_str.startswith("/cms/ldap_home") or srcdir_str.startswith("/cms/scratch") or srcdir_str.startswith("/cms_scratch")):
                 dirname = srcdir_str.split(self.localid)[-1]
-                self.destdir[srcdir] = '/xrd/store/user/%s/'%(self.localid)+dirname 
+                self.destdir[srcdir] = f"/xrd/store/user/{self.cernId}/{self.destprepend}/{dirname}"
             
     def getCernId(self):
         if os.system("voms-proxy-info -exists") != 0:
