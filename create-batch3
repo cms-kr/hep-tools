@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-version = "18.04.17"
+version = "24.06.29."
 
 import sys, os, re
 # Check necessary envvars
@@ -681,7 +681,8 @@ transfer_input_files = job.tar.gz""".format(self.jobName.replace('/','_')), file
             print('''
 accounting_group=group_cms
 +Tag = "create-batch v%s"
-+SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/%s:latest"'''% (version, osgVersion), file=jdlOut)
++SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/%s:latest"
++SingularityBind = "/cvmfs,/cms,/cms_scratch"'''% (version, osgVersion), file=jdlOut
             requirements.append("HasSingularity == true")
 
         if len(self.blacklist) > 0:
