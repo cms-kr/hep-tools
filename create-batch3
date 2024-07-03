@@ -320,7 +320,8 @@ class TheJobConfig:
                     cfgOut = open(cfgFileName, "w")
                     print("""#!/usr/bin/env python
 import _pickle
-process = _pickle.load(open("job_cfg.pkl")) """, file=cfgOut)
+with open("job_cfg.pkl","rb") as f:
+  process = _pickle.load(f) """, file=cfgOut)
 
                     print("""process.source.fileNames = %s """ % (self.files[begin:end]), file=cfgOut)
                     ## Add secondary files if requested
@@ -337,7 +338,8 @@ process = _pickle.load(open("job_cfg.pkl")) """, file=cfgOut)
                     print("""#!/usr/bin/env python
 import FWCore.ParameterSet.Config as cms
 import _pickle
-process = _pickle.load(open("job_cfg.pkl")) """, file=cfgOut)
+with open("job_cfg.pkl","rb") as f:
+  process = _pickle.load(f) """, file=cfgOut)
 
                     print("""process.source.firstRun = cms.untracked.uint32(%s)""" % (self.firstRun), file=cfgOut)
                     print("""process.source.firstLuminosityBlock = cms.untracked.uint32(%s)""" % (section+1), file=cfgOut)
