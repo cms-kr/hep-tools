@@ -475,6 +475,8 @@ whoami
 mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 tar xzf {0}/job.tar.gz
+cp job_*_cfg.y {1}
+cp job_cfg.pkl {1} 
 cd {1}
 scram build ProjectRename
 eval `scram runtime -sh`
@@ -667,7 +669,7 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 output = job_$(Process).log
 error = job_$(Process).err
-transfer_input_files = job.tar.gz""".format(self.jobName.replace('/','_')), file=jdlOut)
+transfer_input_files = job.tar.gz, job_$INT(Process,%03d)_cfg.py, job_cfg.pkl""".format(self.jobName.replace('/','_')), file=jdlOut)
         if self.config.transferCmd == '':
             print("transfer_output_files = ", (",".join([os.path.join(self.jobBase, x) for x in self.outFileNames])), file=jdlOut)
             remapStrs = ["{0}.{1}={0}_$(Process).{1}".format('.'.join(x.split('.')[:-1]), x.split('.')[-1]) for x in self.outFileNames]
