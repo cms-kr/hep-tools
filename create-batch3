@@ -318,7 +318,7 @@ class TheJobConfig:
 
                     cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
                     cfgOut = open(cfgFileName, "w")
-                    print("""#!/usr/bin/env python
+                    print("""#!/usr/bin/env python3
 import _pickle
 with open("job_cfg.pkl","rb") as f:
   process = _pickle.load(f) """, file=cfgOut)
@@ -335,7 +335,7 @@ with open("job_cfg.pkl","rb") as f:
                 for section in range(self.nSection):
                     cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
                     cfgOut = open(cfgFileName, "w")
-                    print("""#!/usr/bin/env python
+                    print("""#!/usr/bin/env python3
 import FWCore.ParameterSet.Config as cms
 import _pickle
 with open("job_cfg.pkl","rb") as f:
