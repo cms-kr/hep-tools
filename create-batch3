@@ -2,7 +2,7 @@
 
 version = "24.07.03."
 
-import sys, os, re
+import sys, os, re, glob
 # Check necessary envvars
 if 'CMSSW_VERSION' not in os.environ:
     print("ERROR: You have to set up CMSSW. Run cmsenv in your working directory.")
@@ -319,8 +319,8 @@ class TheJobConfig:
                     cfgFileName = "%s/job_%03d_cfg.py" % (self.jobDir, section)
                     cfgOut = open(cfgFileName, "w")
                     print("""#!/usr/bin/env python
-import cPickle
-process = cPickle.load(open("job_cfg.pkl")) """, file=cfgOut)
+import _pickle
+process = _pickle.load(open("job_cfg.pkl")) """, file=cfgOut)
 
                     print("""process.source.fileNames = %s """ % (self.files[begin:end]), file=cfgOut)
                     ## Add secondary files if requested
@@ -336,8 +336,8 @@ process = cPickle.load(open("job_cfg.pkl")) """, file=cfgOut)
                     cfgOut = open(cfgFileName, "w")
                     print("""#!/usr/bin/env python
 import FWCore.ParameterSet.Config as cms
-import cPickle
-process = cPickle.load(open("job_cfg.pkl")) """, file=cfgOut)
+import _pickle
+process = _pickle.load(open("job_cfg.pkl")) """, file=cfgOut)
 
                     print("""process.source.firstRun = cms.untracked.uint32(%s)""" % (self.firstRun), file=cfgOut)
                     print("""process.source.firstLuminosityBlock = cms.untracked.uint32(%s)""" % (section+1), file=cfgOut)
@@ -475,7 +475,7 @@ whoami
 mkdir -p /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 cd /tmp/${{USER}}/PBS_${{PBS_JOBID}}
 tar xzf {0}/job.tar.gz
-cp job_*_cfg.y {1}
+cp job_*_cfg.py {1}
 cp job_cfg.pkl {1} 
 cd {1}
 scram build ProjectRename
@@ -576,6 +576,8 @@ source $CMS_PATH/cmsset_default.sh
 hostname
 whoami
 tar xzf job.tar.gz
+cp job_*_cfg.py {1}
+cp job_cfg.pkl {1}
 cd {1}
 cd -
 cd {3}/src
@@ -685,7 +687,7 @@ accounting_group=group_cms
 +Tag = "create-batch v%s"
 +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/%s:latest"
 +SingularityBind = "/cvmfs,/cms,/cms_scratch,/etc/profile.d,/etc/condor"'''% (version, osgVersion), file=jdlOut)
-            requirements.append("HasSingularity == true")
+            requirements.append("(HasSingularity==true)")
 
         if len(self.blacklist) > 0:
             requirements.extend(["Machine != \""+x+"\"" for x in self.blacklist])
@@ -704,14 +706,13 @@ accounting_group=group_cms
         tmpFile.close()
 
         print("@@ Archive files for job submission...")
-        exclCommon = "--exclude tmp --exclude 'job.tar' --exclude 'job.tar.gz' --exclude-vcs --exclude-tag-all=.requestcache "
-        os.system("tar cf {0}/job.tar {1} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-                 + exclCommon + " --exclude-tag-all=.create-batch "
-                 + " --exclude={0}/src/*/*/data --exclude=*.root".format(self.cmsswBase))
-        os.system("tar rf {0}/job.tar {1}/src/*/*/data --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-                 + exclCommon + " --exclude-tag-all=.create-batch ")
-        os.system("tar rf {0}/job.tar {1}/src/*/*/python {1}/src/*/*/interface {1}/src/*/*/src {1}/src/*/*/plugins {1}/src/*/*/BuildFile* --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
-                 + exclCommon + " --exclude-tag-all=.create-batch ")
+        exclCommon = " --exclude-tag-all=.create-batch --exclude tmp --exclude 'job.tar' --exclude 'job.tar.gz' --exclude-vcs --exclude-tag-all=.requestcache "
+        os.system("tar " + exclCommon + " --exclude={0}/src/*/*/data --exclude=*.root".format(self.cmsswBase)
+                 + " -cf {0}/job.tar {1} --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase)))
+        if( len(glob.glob("{0}/src/*/*/data".format(self.cmsswBase))>0):
+            os.system("tar " + exclCommon + " -rf {0}/job.tar {1}/src/*/*/data --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase)))
+        os.system("tar " + exclCommon 
+                 + " -rf {0}/job.tar {1}/src/*/*/python {1}/src/*/*/interface {1}/src/*/*/src {1}/src/*/*/plugins {1}/src/*/*/BuildFile* --xform='s:{1}:{2}:' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase))
         if self.cmsswBase in self.jobDir:
             os.system("tar rf {0}/job.tar {0} --xform='s:{1}:{2}:' --xform='s:{3}::' -P ".format(self.jobDir, self.cmsswBase, os.path.basename(self.cmsswBase), os.path.basename(self.jobDir))
                       + exclCommon + " --exclude=*.root")
