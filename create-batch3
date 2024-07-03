@@ -684,7 +684,7 @@ transfer_input_files = job.tar.gz, job_$INT(Process,%03d)_cfg.py, job_cfg.pkl"""
 accounting_group=group_cms
 +Tag = "create-batch v%s"
 +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/%s:latest"
-+SingularityBind = "/cvmfs,/cms,/cms_scratch,/etc/profile.d,/etc/condor"'''% (version, osgVersion), file=jdlOut
++SingularityBind = "/cvmfs,/cms,/cms_scratch,/etc/profile.d,/etc/condor"'''% (version, osgVersion), file=jdlOut)
             requirements.append("HasSingularity == true")
 
         if len(self.blacklist) > 0:
